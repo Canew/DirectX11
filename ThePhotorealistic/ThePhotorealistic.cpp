@@ -3,6 +3,11 @@
 
 #include <windowsX.h>
 #include <sstream>
+#include "Shader.h"
+#include "Object.h"
+#include "Plane.h"
+#include "Cube.h"
+#include "Camera.h"
 #include "ThePhotorealistic.h"
 
 namespace
@@ -54,19 +59,14 @@ ThePhotorealistic::~ThePhotorealistic()
 {
 }
 
-HINSTANCE ThePhotorealistic::AppInst()const
+HINSTANCE ThePhotorealistic::AppInst() const
 {
 	return mhAppInst;
 }
 
-HWND ThePhotorealistic::MainWnd()const
+HWND ThePhotorealistic::MainWnd() const
 {
 	return mhMainWnd;
-}
-
-float ThePhotorealistic::AspectRatio()const
-{
-	return static_cast<float>(mClientWidth) / mClientHeight;
 }
 
 int ThePhotorealistic::Run()
@@ -112,6 +112,18 @@ bool ThePhotorealistic::Init()
 	if (!InitDirect3D())
 		return false;
 
+	Camera::GetInstance();
+
+	mShader = std::make_unique<Shader>();
+	mShader->Init(*md3dDevice.Get());
+
+	mObject = std::make_unique<Cube>();
+	mObject->Init(*md3dDevice.Get());
+	mPlane = std::make_unique<Plane>();
+	mPlane->Init(*md3dDevice.Get());
+	mPlane->SetPosition(0.0f, -10.0f, 0.0f);
+	mPlane->SetScale(10.0f, 10.0f, 10.0f);
+
 	return true;
 }
 
@@ -128,7 +140,7 @@ void ThePhotorealistic::OnResize()
 	mSwapChain->ResizeBuffers(1, mClientWidth, mClientHeight, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
 	ComPtr<ID3D11Texture2D> backBuffer;
 	mSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(backBuffer.GetAddressOf()));
-	md3dDevice->CreateRenderTargetView(backBuffer.Get(), 0, mRenderTargetView.GetAddressOf());
+	md3dDevice->CreateRenderTargetView(backBuffer.Get(), 0, mRenderTargetView.GetAddressOf());	
 
 	// Create the depth/stencil buffer and view.
 	D3D11_TEXTURE2D_DESC depthStencilDesc = {};
@@ -159,10 +171,24 @@ void ThePhotorealistic::OnResize()
 	md3dDevice->CreateTexture2D(&depthStencilDesc, 0, mDepthStencilBuffer.GetAddressOf());
 	md3dDevice->CreateDepthStencilView(mDepthStencilBuffer.Get(), 0, mDepthStencilView.GetAddressOf());
 
-
 	// Bind the render target view and depth/stencil view to the pipeline.
 	md3dImmediateContext->OMSetRenderTargets(1, mRenderTargetView.GetAddressOf(), mDepthStencilView.Get());
 
+	// Set Rasterizer State
+	D3D11_RASTERIZER_DESC rasterDesc = {};
+	rasterDesc.AntialiasedLineEnable = false;
+	rasterDesc.CullMode = D3D11_CULL_NONE;
+	rasterDesc.DepthBias = 0;
+	rasterDesc.DepthBiasClamp = 0.0f;
+	rasterDesc.DepthClipEnable = true;
+	rasterDesc.FillMode = D3D11_FILL_SOLID;
+	rasterDesc.FrontCounterClockwise = false;
+	rasterDesc.MultisampleEnable = false;
+	rasterDesc.ScissorEnable = false;
+	rasterDesc.SlopeScaledDepthBias = 0.0f;
+
+	md3dDevice->CreateRasterizerState(&rasterDesc, mRasterizerState.GetAddressOf());
+	md3dImmediateContext->RSSetState(mRasterizerState.Get());
 
 	// Set the viewport transform.
 	mScreenViewport.TopLeftX = 0;
@@ -177,6 +203,8 @@ void ThePhotorealistic::OnResize()
 
 void ThePhotorealistic::UpdateScene(float dt)
 {
+	Camera::GetInstance()->UpdateViewMatrix();
+	Camera::GetInstance()->UpdateProjectionMatrix();
 }
 
 void ThePhotorealistic::DrawScene()
@@ -187,6 +215,11 @@ void ThePhotorealistic::DrawScene()
 	float color[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	md3dImmediateContext->ClearRenderTargetView(mRenderTargetView.Get(), color);
 	md3dImmediateContext->ClearDepthStencilView(mDepthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+
+	mShader->SetShader(*md3dImmediateContext.Get());
+
+	mObject->Render(*md3dImmediateContext.Get());
+	mPlane->Render(*md3dImmediateContext.Get());
 
 	mSwapChain->Present(0, 0);
 }
@@ -216,6 +249,10 @@ LRESULT ThePhotorealistic::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 		// Save the new client area dimensions.
 		mClientWidth = LOWORD(lParam);
 		mClientHeight = HIWORD(lParam);
+
+		// Update Camera
+		Camera::GetInstance()->UpdateClientSize(mClientWidth, mClientHeight);
+
 		if (md3dDevice)
 		{
 			if (wParam == SIZE_MINIMIZED)
@@ -484,5 +521,3 @@ void ThePhotorealistic::CalculateFrameStats()
 		timeElapsed += 1.0f;
 	}
 }
-
-

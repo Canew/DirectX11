@@ -4,6 +4,7 @@
 #include "D3DUtil.h"
 #include "GameTimer.h"
 #include <string>
+#include <memory>
 
 class ThePhotorealistic
 {
@@ -11,9 +12,8 @@ public:
 	ThePhotorealistic(HINSTANCE hInstance);
 	virtual ~ThePhotorealistic();
 
-	HINSTANCE AppInst()const;
-	HWND MainWnd()const;
-	float AspectRatio()const;
+	HINSTANCE AppInst() const;
+	HWND MainWnd() const;
 
 	int Run();
 
@@ -38,7 +38,6 @@ private:
 	void CalculateFrameStats();
 
 private:
-
 	HINSTANCE mhAppInst;
 	HWND mhMainWnd;
 	bool mAppPaused;
@@ -55,6 +54,7 @@ private:
 	ComPtr<ID3D11Texture2D> mDepthStencilBuffer;
 	ComPtr<ID3D11RenderTargetView> mRenderTargetView;
 	ComPtr<ID3D11DepthStencilView> mDepthStencilView;
+	ComPtr<ID3D11RasterizerState> mRasterizerState;
 	D3D11_VIEWPORT mScreenViewport;
 
 	// Derived class should set these in derived constructor to customize starting values.
@@ -63,4 +63,11 @@ private:
 	int mClientWidth;
 	int mClientHeight;
 	bool mEnable4xMsaa;
+
+	std::unique_ptr<class Object> mObject;
+	std::unique_ptr<class Object> mPlane;
+	std::unique_ptr<class Shader> mShader;
+
+	XMFLOAT4X4 mView;
+	XMFLOAT4X4 mProj;
 };
