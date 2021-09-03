@@ -1,20 +1,27 @@
 #include "Camera.h"
 #include "Object.h"
 
-void Object::Init(ID3D11Device& device)
+Object::Object(ID3D11Device& device) : mTexture(device), mMaterial(XMFLOAT4(0.5f, 0.5f, 0.5f, 0.1f), XMFLOAT3(0.05f, 0.05f, 0.05f), 0.1f)
 {
-	BuildGeometryBuffers(device);
-
-	// Build Constant Buffers
+	// Build Matrix Constant Buffers
 	D3D11_BUFFER_DESC objectBufferDesc = {};
 	objectBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-	objectBufferDesc.ByteWidth = sizeof(ObjectBuffer);
+	objectBufferDesc.ByteWidth = sizeof(ObjectMatrix);
 	objectBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 	objectBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	objectBufferDesc.MiscFlags = 0;
 	objectBufferDesc.StructureByteStride = 0;
-
 	device.CreateBuffer(&objectBufferDesc, NULL, mObjectBuffer.GetAddressOf());
+
+	// Build Material Constant Buffers
+	D3D11_BUFFER_DESC materialBufferDesc = {};
+	materialBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	materialBufferDesc.ByteWidth = sizeof(Material);
+	materialBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	materialBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	materialBufferDesc.MiscFlags = 0;
+	materialBufferDesc.StructureByteStride = 0;
+	device.CreateBuffer(&materialBufferDesc, NULL, mMaterialBuffer.GetAddressOf());
 }
 
 void Object::Render(ID3D11DeviceContext& deviceContext)
@@ -30,12 +37,11 @@ void Object::Render(ID3D11DeviceContext& deviceContext)
 	view = XMMatrixTranspose(view);
 	projection = XMMatrixTranspose(projection);
 
-	// Vertex Shader
-	// Set Constant Buffer
+	// Set VS constant buffer
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	deviceContext.Map(mObjectBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 
-	ObjectBuffer* objectBufferPtr = reinterpret_cast<ObjectBuffer*>(mappedResource.pData);
+	ObjectMatrix* objectBufferPtr = reinterpret_cast<ObjectMatrix*>(mappedResource.pData);
 	objectBufferPtr->World = world;
 	objectBufferPtr->View = view;
 	objectBufferPtr->Projection = projection;
@@ -45,8 +51,24 @@ void Object::Render(ID3D11DeviceContext& deviceContext)
 	unsigned int bufferNumber = 0;
 	deviceContext.VSSetConstantBuffers(bufferNumber, 1, mObjectBuffer.GetAddressOf());
 
+	// Set PS constant buffer.
+	deviceContext.Map(mMaterialBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+
+	Material* materialBufferPtr = reinterpret_cast<Material*>(mappedResource.pData);
+	materialBufferPtr->DiffuseAlbedo = mMaterial.DiffuseAlbedo;
+	materialBufferPtr->Fresnel = mMaterial.Fresnel;
+	materialBufferPtr->Roughness = mMaterial.Roughness;
+
+	deviceContext.Unmap(mMaterialBuffer.Get(), 0);
+
+	bufferNumber = 0;
+	deviceContext.PSSetConstantBuffers(bufferNumber, 1, mMaterialBuffer.GetAddressOf());
+
+	// Set texture.
+	deviceContext.PSSetShaderResources(0, 1, mTexture.GetShaderResourceView().GetAddressOf());
+
 	// Input Assembler
-	UINT stride = sizeof(Vertex);
+	UINT stride = sizeof(Vertex);	
 	UINT offset = 0;
 	deviceContext.IASetVertexBuffers(0, 1, mVertexBuffer.GetAddressOf(), &stride, &offset);
 	deviceContext.IASetIndexBuffer(mIndexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
@@ -80,6 +102,14 @@ void Object::SetScale(XMFLOAT3 scale)
 	mScale = scale;
 }
 
-void Object::BuildGeometryBuffers(ID3D11Device& device)
+void Object::SetMaterial(XMFLOAT4 diffuseAlbedo, XMFLOAT3 fresnel, float roughness)
 {
+	mMaterial.DiffuseAlbedo = diffuseAlbedo;
+	mMaterial.Fresnel = fresnel;
+	mMaterial.Roughness = roughness;
+}
+
+void Object::SetTexture(ID3D11Device& device, const WCHAR* filename)
+{
+	mTexture = Texture(device, filename);
 }

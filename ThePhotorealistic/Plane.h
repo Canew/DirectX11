@@ -4,6 +4,7 @@
 
 class Plane : public Object
 {
-protected:
-	virtual void BuildGeometryBuffers(ID3D11Device& device) override;
+public:
+	Plane(ID3D11Device& device);
+	virtual ~Plane() = default;
 };

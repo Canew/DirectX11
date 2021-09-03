@@ -22,6 +22,7 @@ public:
 
 	virtual bool Init();
 	virtual void OnResize();
+	virtual void ProcessInput(float dt);
 	virtual void UpdateScene(float dt);
 	virtual void DrawScene();
 	virtual LRESULT MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -64,10 +65,12 @@ private:
 	int mClientHeight;
 	bool mEnable4xMsaa;
 
-	std::unique_ptr<class Object> mObject;
-	std::unique_ptr<class Object> mPlane;
 	std::unique_ptr<class Shader> mShader;
+	std::unique_ptr<class Scene> mScene;
 
 	XMFLOAT4X4 mView;
 	XMFLOAT4X4 mProj;
+
+	float mLastMouseX;
+	float mLastMouseY;
 };

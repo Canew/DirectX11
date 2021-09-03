@@ -4,9 +4,8 @@
 #include <windowsX.h>
 #include <sstream>
 #include "Shader.h"
+#include "Scene.h"
 #include "Object.h"
-#include "Plane.h"
-#include "Cube.h"
 #include "Camera.h"
 #include "ThePhotorealistic.h"
 
@@ -91,6 +90,7 @@ int ThePhotorealistic::Run()
 			if (!mAppPaused)
 			{
 				CalculateFrameStats();
+				ProcessInput(mTimer.DeltaTime());
 				UpdateScene(mTimer.DeltaTime());
 				DrawScene();
 			}
@@ -117,12 +117,7 @@ bool ThePhotorealistic::Init()
 	mShader = std::make_unique<Shader>();
 	mShader->Init(*md3dDevice.Get());
 
-	mObject = std::make_unique<Cube>();
-	mObject->Init(*md3dDevice.Get());
-	mPlane = std::make_unique<Plane>();
-	mPlane->Init(*md3dDevice.Get());
-	mPlane->SetPosition(0.0f, -10.0f, 0.0f);
-	mPlane->SetScale(10.0f, 10.0f, 10.0f);
+	mScene = std::make_unique<Scene>(*md3dDevice.Get());
 
 	return true;
 }
@@ -201,6 +196,78 @@ void ThePhotorealistic::OnResize()
 	md3dImmediateContext->RSSetViewports(1, &mScreenViewport);
 }
 
+void ThePhotorealistic::ProcessInput(float dt)
+{
+	// Process mouse input
+	// Get current cursor position
+	POINT cursorPos;
+	GetCursorPos(&cursorPos);
+
+	// Get center position of window
+	RECT clientRect;
+	GetClientRect(mhMainWnd, &clientRect);
+	int horizonCenter = (clientRect.right - clientRect.left / 2);
+	int verticalCenter = (clientRect.bottom - clientRect.top / 2);
+	POINT centerPos = { horizonCenter, verticalCenter };
+
+	// Update data if mouse position is different from center of window
+	if (cursorPos.x != centerPos.x || cursorPos.y != centerPos.y)
+	{
+		float deltaX = static_cast<float>(cursorPos.x) - centerPos.x;
+		float deltaY = static_cast<float>(cursorPos.y) - centerPos.y;
+
+		XMFLOAT3 cameraRotation = Camera::GetInstance()->GetRotation();
+		cameraRotation.y += deltaX;
+		cameraRotation.z += deltaY;
+		Camera::GetInstance()->SetRotation(cameraRotation);
+
+		// Set mouse coordinates to center of window
+		SetCursorPos(horizonCenter, verticalCenter);
+
+		// Update mouse coordinates
+		mLastMouseX = static_cast<float>(cursorPos.x);
+		mLastMouseY = static_cast<float>(cursorPos.y);
+	}
+
+	// Process keyboard input
+	if (GetAsyncKeyState('W') & 0x8000)
+	{
+		XMFLOAT3 currentPosition = Camera::GetInstance()->GetPosition();
+		currentPosition.x += 50.0f * dt;
+		Camera::GetInstance()->SetPosition(currentPosition);
+	}
+	if (GetAsyncKeyState('S') & 0x8000)
+	{
+		XMFLOAT3 currentPosition = Camera::GetInstance()->GetPosition();
+		currentPosition.x -= 50.0f * dt;
+		Camera::GetInstance()->SetPosition(currentPosition);
+	}
+	if (GetAsyncKeyState('A') & 0x8000)
+	{
+		XMFLOAT3 currentPosition = Camera::GetInstance()->GetPosition();
+		currentPosition.z += 50.0f * dt;
+		Camera::GetInstance()->SetPosition(currentPosition);
+	}
+	if (GetAsyncKeyState('D') & 0x8000)
+	{
+		XMFLOAT3 currentPosition = Camera::GetInstance()->GetPosition();
+		currentPosition.z -= 50.0f * dt;
+		Camera::GetInstance()->SetPosition(currentPosition);
+	}
+	if (GetAsyncKeyState('Q') & 0x8000)
+	{
+		XMFLOAT3 currentPosition = Camera::GetInstance()->GetPosition();
+		currentPosition.y += 50.0f * dt;
+		Camera::GetInstance()->SetPosition(currentPosition);
+	}
+	if (GetAsyncKeyState('E') & 0x8000)
+	{
+		XMFLOAT3 currentPosition = Camera::GetInstance()->GetPosition();
+		currentPosition.y -= 50.0f * dt;
+		Camera::GetInstance()->SetPosition(currentPosition);
+	}
+}
+
 void ThePhotorealistic::UpdateScene(float dt)
 {
 	Camera::GetInstance()->UpdateViewMatrix();
@@ -218,8 +285,7 @@ void ThePhotorealistic::DrawScene()
 
 	mShader->SetShader(*md3dImmediateContext.Get());
 
-	mObject->Render(*md3dImmediateContext.Get());
-	mPlane->Render(*md3dImmediateContext.Get());
+	mScene->Render(*md3dImmediateContext.Get());
 
 	mSwapChain->Present(0, 0);
 }

@@ -4,5 +4,10 @@
 
 class Cube : public Object
 {
-	virtual void BuildGeometryBuffers(ID3D11Device& device) override;
+public:
+	Cube(ID3D11Device& device, float width, float height, float depth);
+	virtual ~Cube() = default;
+
+protected:
+	virtual void BuildGeometryBuffers(ID3D11Device& device, float width, float height, float depth);
 };

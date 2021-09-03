@@ -1,14 +1,14 @@
 #include "Plane.h"
 
-void Plane::BuildGeometryBuffers(ID3D11Device& device)
+Plane::Plane(ID3D11Device& device) : Object(device)
 {
 	// Create vertex buffer
 	mVertices =
 	{
-		{ XMFLOAT3(-1.0f, 0.0f, -1.0f), XMFLOAT4(0.9f, 0.9f, 0.2f, 1.0f) },
-		{ XMFLOAT3(-1.0f, 0.0f, +1.0f), XMFLOAT4(0.9f, 0.9f, 0.2f, 1.0f) },
-		{ XMFLOAT3(+1.0f, 0.0f, -1.0f), XMFLOAT4(0.9f, 0.9f, 0.2f, 1.0f) },
-		{ XMFLOAT3(+1.0f, 0.0f, +1.0f), XMFLOAT4(0.9f, 0.9f, 0.2f, 1.0f) },
+		{ XMFLOAT3(-1.0f, 0.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(-1.0f, -1.0f) },
+		{ XMFLOAT3(-1.0f, 0.0f, +1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(-1.0f, +1.0f) },
+		{ XMFLOAT3(+1.0f, 0.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(+1.0f, -1.0f) },
+		{ XMFLOAT3(+1.0f, 0.0f, +1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT2(+1.0f, +1.0f) },
 	};
 
 	mVertexCount = static_cast<unsigned int>(mVertices.size());

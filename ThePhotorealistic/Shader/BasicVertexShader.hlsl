@@ -1,4 +1,5 @@
-cbuffer cbPerObject
+
+cbuffer cbPerObject : register(b0)
 {
 	matrix gWorld;
 	matrix gView;
@@ -7,27 +8,35 @@ cbuffer cbPerObject
 
 struct VertexIn
 {
-	float3 Pos  : POSITION;
-	float4 Color : COLOR;
+	float3 PosL : POSITION;
+	float3 NormalL : NORMAL;
+	float2 TexC : TEXCOORD;
 };
 
 struct VertexOut
 {
-	float4 Pos  : SV_POSITION;
-	float4 Color : COLOR;
+	float4 PosH : SV_POSITION;
+	float3 PosW : POSITION;
+	float3 NormalW : NORMAL;
+	float2 TexC : TEXCOORD;
 };
 
 VertexOut main(VertexIn vin)
 {
 	VertexOut vout;
 
-	// Transform to homogeneous clip space.
-	vout.Pos = mul(float4(vin.Pos, 1.0f), gWorld);
-	vout.Pos = mul(vout.Pos, gView);
-	vout.Pos = mul(vout.Pos, gProjection);
+	// Transform to world space.
+	vout.PosH = mul(float4(vin.PosL, 1.0f), gWorld);
+	vout.PosW = vout.PosH.xyz;
 
-	// Just pass vertex color into the pixel shader.
-	vout.Color = vin.Color;
+	// Transform to homogeneous clip space.
+	vout.PosH = mul(vout.PosH, gView);
+	vout.PosH = mul(vout.PosH, gProjection);
+
+
+	vout.NormalW = mul(vin.NormalL, (float3x3)gWorld);
+	vout.NormalW = normalize(vout.NormalW);
+	vout.TexC = vin.TexC;
 
 	return vout;
 }
