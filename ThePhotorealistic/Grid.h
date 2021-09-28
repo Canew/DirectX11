@@ -5,13 +5,9 @@
 class Grid : public Object
 {
 public:
-	Grid(ID3D11Device& device, float width, float depth, UINT m, UINT n);
+	Grid(ID3D11Device& device, ID3D11DeviceContext& deviceContext, float width, float depth, UINT m, UINT n);
 	virtual ~Grid() = default;
-
-protected:
-	virtual void BuildGeometryBuffers(ID3D11Device& device, float width, float depth, UINT m, UINT n);
 
 private:
 	float GetHeight(float x, float z) const;
 };
-	

@@ -47,8 +47,6 @@ private:
 	bool mResizing;
 	UINT m4xMsaaQuality;
 
-	GameTimer mTimer;
-
 	ComPtr<ID3D11Device> md3dDevice;
 	ComPtr<ID3D11DeviceContext> md3dImmediateContext;
 	ComPtr<IDXGISwapChain> mSwapChain;
@@ -65,7 +63,6 @@ private:
 	int mClientHeight;
 	bool mEnable4xMsaa;
 
-	std::unique_ptr<class Shader> mShader;
 	std::unique_ptr<class Scene> mScene;
 
 	XMFLOAT4X4 mView;

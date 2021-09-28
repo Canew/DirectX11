@@ -1,4 +1,4 @@
-
+#include "stdafx.h"
 #include "ThePhotorealistic.h"
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,

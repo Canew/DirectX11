@@ -8,6 +8,8 @@ class Scene
 {
 	struct Light
 	{
+		XMFLOAT4 Ambient;
+		XMFLOAT4 Diffuse;
 		XMFLOAT3 Strength;
 		float FalloffStart;           // point/spot light only
 		XMFLOAT3 Direction;    // directional/spot light only
@@ -17,25 +19,34 @@ class Scene
 	};
 	struct Pass
 	{
-		XMFLOAT4 AmbientLight;
 		XMFLOAT3 EyePosition;
-		float Pad;
+		float Pad1;
 
 		Light Lights[16];
+
+		float FogStart;
+		float FogRange;
+		XMFLOAT2 Pad2;
+		XMFLOAT4 FogColor;
 	};
 public:
-	Scene(ID3D11Device& device);
+	Scene(ID3D11Device& device, ID3D11DeviceContext& deviceContext);
 	virtual ~Scene() = default;
 
+	virtual void Update(ID3D11DeviceContext& deviceContext, float dt);
 	virtual void Render(ID3D11DeviceContext& deviceContext);
 
 private:
 	virtual void CreateConstantBuffer(ID3D11Device& device);
-	virtual void SetConstantBuffer(ID3D11DeviceContext& deviceContext);
+	virtual void UpdateConstantBuffer(ID3D11DeviceContext& deviceContext);
 
 private:
 	std::vector<std::unique_ptr<class Object>> mObjectList;
 	std::vector<std::unique_ptr<Light>> mLightList;
+	std::unique_ptr<class Sky> mSky;
 
 	ComPtr<ID3D11Buffer> mPassBuffer = nullptr;
+
+	ID3D11Device& mDevice;
+	ID3D11DeviceContext& mDeviceContext;
 };

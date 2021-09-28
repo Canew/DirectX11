@@ -12,6 +12,8 @@ class Light
     };
     struct LightBuffer
     {
+        XMFLOAT4 Ambient;
+        XMFLOAT4 Diffuse;
         XMFLOAT3 Strength;
         float FalloffStart;           // point/spot light only
         XMFLOAT3 Direction;    // directional/spot light only
@@ -32,6 +34,8 @@ private:
     ComPtr<ID3D11Buffer> mLightBuffer = nullptr;
 
     Type mLightType;
+    XMFLOAT4 mAmbient;
+    XMFLOAT4 mDiffuse;
     XMFLOAT3 mStrength;
     float mFalloffStart;           // point/spot light only
     XMFLOAT3 mDirection;    // directional/spot light only

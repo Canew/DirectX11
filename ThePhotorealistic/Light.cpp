@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "Light.h"
 
 Light::Light(ID3D11Device& device)
@@ -21,6 +22,8 @@ void Light::SetConstantBuffer(ID3D11DeviceContext& deviceContext)
 	deviceContext.Map(mLightBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 
 	LightBuffer* lightBufferPtr = reinterpret_cast<LightBuffer*>(mappedResource.pData);
+	lightBufferPtr->Ambient = mAmbient;
+	lightBufferPtr->Diffuse = mDiffuse;
 	lightBufferPtr->Strength = mStrength;
 	lightBufferPtr->FalloffStart = mFalloffStart;
 	lightBufferPtr->Direction = mDirection;

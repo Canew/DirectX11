@@ -1,12 +1,15 @@
 // ThePhotorealistic.cpp : Defines the entry point for the application.
 //
 
+#include "stdafx.h"
 #include <windowsX.h>
 #include <sstream>
-#include "Shader.h"
+#include "BasicShader.h"
+#include "SkyShader.h"
 #include "Scene.h"
 #include "Object.h"
 #include "Camera.h"
+#include "RenderState.h"
 #include "ThePhotorealistic.h"
 
 namespace
@@ -72,7 +75,7 @@ int ThePhotorealistic::Run()
 {
 	MSG msg = { 0 };
 
-	mTimer.Reset();
+	GameTimer::StaticClass()->Reset();
 
 	while (msg.message != WM_QUIT)
 	{
@@ -85,13 +88,13 @@ int ThePhotorealistic::Run()
 		// Otherwise, do animation/game stuff.
 		else
 		{
-			mTimer.Tick();
+			GameTimer::StaticClass()->Tick();
 
 			if (!mAppPaused)
 			{
 				CalculateFrameStats();
-				ProcessInput(mTimer.DeltaTime());
-				UpdateScene(mTimer.DeltaTime());
+				ProcessInput(GameTimer::StaticClass()->DeltaTime());
+				UpdateScene(GameTimer::StaticClass()->DeltaTime());
 				DrawScene();
 			}
 			else
@@ -112,12 +115,14 @@ bool ThePhotorealistic::Init()
 	if (!InitDirect3D())
 		return false;
 
-	Camera::GetInstance();
+	GameTimer::StaticClass();
+	Camera::StaticClass();
 
-	mShader = std::make_unique<Shader>();
-	mShader->Init(*md3dDevice.Get());
+	BasicShader::StaticClass()->Init(*md3dDevice.Get());
+	SkyShader::StaticClass()->Init(*md3dDevice.Get());
+	RenderState::Init(*md3dDevice.Get());
 
-	mScene = std::make_unique<Scene>(*md3dDevice.Get());
+	mScene = std::make_unique<Scene>(*md3dDevice.Get(), *md3dImmediateContext.Get());
 
 	return true;
 }
@@ -216,10 +221,10 @@ void ThePhotorealistic::ProcessInput(float dt)
 		float deltaX = static_cast<float>(cursorPos.x) - centerPos.x;
 		float deltaY = static_cast<float>(cursorPos.y) - centerPos.y;
 
-		XMFLOAT3 cameraRotation = Camera::GetInstance()->GetRotation();
+		XMFLOAT3 cameraRotation = Camera::StaticClass()->GetRotation();
 		cameraRotation.y += deltaX;
 		cameraRotation.z += deltaY;
-		Camera::GetInstance()->SetRotation(cameraRotation);
+		Camera::StaticClass()->SetRotation(cameraRotation);
 
 		// Set mouse coordinates to center of window
 		SetCursorPos(horizonCenter, verticalCenter);
@@ -232,46 +237,48 @@ void ThePhotorealistic::ProcessInput(float dt)
 	// Process keyboard input
 	if (GetAsyncKeyState('W') & 0x8000)
 	{
-		XMFLOAT3 currentPosition = Camera::GetInstance()->GetPosition();
+		XMFLOAT3 currentPosition = Camera::StaticClass()->GetPosition();
 		currentPosition.x += 50.0f * dt;
-		Camera::GetInstance()->SetPosition(currentPosition);
+		Camera::StaticClass()->SetPosition(currentPosition);
 	}
 	if (GetAsyncKeyState('S') & 0x8000)
 	{
-		XMFLOAT3 currentPosition = Camera::GetInstance()->GetPosition();
+		XMFLOAT3 currentPosition = Camera::StaticClass()->GetPosition();
 		currentPosition.x -= 50.0f * dt;
-		Camera::GetInstance()->SetPosition(currentPosition);
+		Camera::StaticClass()->SetPosition(currentPosition);
 	}
 	if (GetAsyncKeyState('A') & 0x8000)
 	{
-		XMFLOAT3 currentPosition = Camera::GetInstance()->GetPosition();
+		XMFLOAT3 currentPosition = Camera::StaticClass()->GetPosition();
 		currentPosition.z += 50.0f * dt;
-		Camera::GetInstance()->SetPosition(currentPosition);
+		Camera::StaticClass()->SetPosition(currentPosition);
 	}
 	if (GetAsyncKeyState('D') & 0x8000)
 	{
-		XMFLOAT3 currentPosition = Camera::GetInstance()->GetPosition();
+		XMFLOAT3 currentPosition = Camera::StaticClass()->GetPosition();
 		currentPosition.z -= 50.0f * dt;
-		Camera::GetInstance()->SetPosition(currentPosition);
+		Camera::StaticClass()->SetPosition(currentPosition);
 	}
 	if (GetAsyncKeyState('Q') & 0x8000)
 	{
-		XMFLOAT3 currentPosition = Camera::GetInstance()->GetPosition();
+		XMFLOAT3 currentPosition = Camera::StaticClass()->GetPosition();
 		currentPosition.y += 50.0f * dt;
-		Camera::GetInstance()->SetPosition(currentPosition);
+		Camera::StaticClass()->SetPosition(currentPosition);
 	}
 	if (GetAsyncKeyState('E') & 0x8000)
 	{
-		XMFLOAT3 currentPosition = Camera::GetInstance()->GetPosition();
+		XMFLOAT3 currentPosition = Camera::StaticClass()->GetPosition();
 		currentPosition.y -= 50.0f * dt;
-		Camera::GetInstance()->SetPosition(currentPosition);
+		Camera::StaticClass()->SetPosition(currentPosition);
 	}
 }
 
 void ThePhotorealistic::UpdateScene(float dt)
 {
-	Camera::GetInstance()->UpdateViewMatrix();
-	Camera::GetInstance()->UpdateProjectionMatrix();
+	Camera::StaticClass()->UpdateViewMatrix();
+	Camera::StaticClass()->UpdateProjectionMatrix();
+
+	mScene->Update(*md3dImmediateContext.Get(), dt);
 }
 
 void ThePhotorealistic::DrawScene()
@@ -279,11 +286,9 @@ void ThePhotorealistic::DrawScene()
 	assert(md3dImmediateContext);
 	assert(mSwapChain);
 
-	float color[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+	float color[4] = { 0.05f, 0.05f, 0.15f, 1.0f };
 	md3dImmediateContext->ClearRenderTargetView(mRenderTargetView.Get(), color);
 	md3dImmediateContext->ClearDepthStencilView(mDepthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
-
-	mShader->SetShader(*md3dImmediateContext.Get());
 
 	mScene->Render(*md3dImmediateContext.Get());
 
@@ -301,12 +306,12 @@ LRESULT ThePhotorealistic::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 		if (LOWORD(wParam) == WA_INACTIVE)
 		{
 			mAppPaused = true;
-			mTimer.Stop();
+			GameTimer::StaticClass()->Stop();
 		}
 		else
 		{
 			mAppPaused = false;
-			mTimer.Start();
+			GameTimer::StaticClass()->Start();
 		}
 		return 0;
 
@@ -317,7 +322,7 @@ LRESULT ThePhotorealistic::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 		mClientHeight = HIWORD(lParam);
 
 		// Update Camera
-		Camera::GetInstance()->UpdateClientSize(mClientWidth, mClientHeight);
+		Camera::StaticClass()->UpdateClientSize(mClientWidth, mClientHeight);
 
 		if (md3dDevice)
 		{
@@ -375,7 +380,7 @@ LRESULT ThePhotorealistic::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 	case WM_ENTERSIZEMOVE:
 		mAppPaused = true;
 		mResizing = true;
-		mTimer.Stop();
+		GameTimer::StaticClass()->Stop();
 		return 0;
 
 		// WM_EXITSIZEMOVE is sent when the user releases the resize bars.
@@ -383,7 +388,7 @@ LRESULT ThePhotorealistic::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 	case WM_EXITSIZEMOVE:
 		mAppPaused = false;
 		mResizing = false;
-		mTimer.Start();
+		GameTimer::StaticClass()->Start();
 		OnResize();
 		return 0;
 
@@ -570,7 +575,7 @@ void ThePhotorealistic::CalculateFrameStats()
 	frameCnt++;
 
 	// Compute averages over one second period.
-	if ((mTimer.TotalTime() - timeElapsed) >= 1.0f)
+	if ((GameTimer::StaticClass()->TotalTime() - timeElapsed) >= 1.0f)
 	{
 		float fps = (float)frameCnt; // fps = frameCnt / 1
 		float mspf = 1000.0f / fps;

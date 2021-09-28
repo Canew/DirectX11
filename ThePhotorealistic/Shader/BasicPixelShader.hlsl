@@ -27,6 +27,8 @@ SamplerState gAnisotropicClampSampler : register(s5);
 
 struct Light
 {
+    float4 Ambient;
+    float4 Diffuse;
 	float3 Strength;
 	float FalloffStart;           // point/spot light only
 	float3 Direction;    // directional/spot light only
@@ -85,7 +87,7 @@ float3 ComputeDirectionalLight(Light L, Material mat, float3 normal, float3 toEy
     // The light vector aims opposite the direction the light rays travel.
     float3 lightVec = -L.Direction;
 
-    // Scale light down by Lambert's cosine law.
+    // Scale light down by Lambert's cosine law.    
     float ndotl = max(dot(lightVec, normal), 0.0f);
     float3 lightStrength = L.Strength * ndotl;
 
@@ -162,6 +164,7 @@ float4 ComputeLighting(Light gLights[MaxLights], Material mat,
 
     int i = 0;
 
+    [unroll]
 #if (NUM_DIR_LIGHTS > 0)
     for (i = 0; i < NUM_DIR_LIGHTS; ++i)
     {
@@ -188,18 +191,21 @@ float4 ComputeLighting(Light gLights[MaxLights], Material mat,
 
 cbuffer cbMaterial : register(b0)
 {
-	float4 gDiffuseAlbedo;
-	float3 gFresnel;
-	float gRoughness;
+	float4 gMatDiffuseAlbedo;
+	float3 gMatFresnel;
+	float gMatRoughness;
 };
 
 cbuffer cbPass : register(b1)
 {
-	float4 gAmbientLight;
 	float3 gEyePosW;
 	float pad;
 
 	Light gLights[MaxLights];
+
+    float gFogStart;
+    float gFogRange;
+    float4 gFogColor;
 };
 
 
@@ -215,20 +221,51 @@ struct PixelIn
 float4 main(PixelIn pin) : SV_Target
 {
     float4 texColor = gDiffuseMap.Sample(gAnisotropicWrapSampler, pin.TexC);
+    clip(texColor.a - 0.1f);
 
-	float3 toEyeW = normalize(gEyePosW - pin.PosW);
+    float3 toEyeW = gEyePosW - pin.PosW;
+    float distToEye = length(toEyeW);
+    toEyeW /= distToEye;
 
-	float4 ambient = gAmbientLight * gDiffuseAlbedo;
+    // Lighting
+    float4 ambient = { 0.0f, 0.0f, 0.0f, 0.0f };
+    [unroll]
+#if (NUM_DIR_LIGHTS > 0)
+    for (int i = 0; i < NUM_DIR_LIGHTS; ++i)
+    {
+        ambient += gLights[i].Ambient * gMatDiffuseAlbedo;
+    }
+#endif
+#if (NUM_POINT_LIGHTS > 0)
+    for (int i = NUM_DIR_LIGHTS; i < NUM_DIR_LIGHTS + NUM_POINT_LIGHTS; ++i)
+    {
+        ambient += gLights[i].Ambient * gMatDiffuseAlbedo;
+    }
+#endif
+#if (NUM_SPOT_LIGHTS > 0)
+    for (int i = NUM_DIR_LIGHTS + NUM_POINT_LIGHTS; i < NUM_DIR_LIGHTS + NUM_POINT_LIGHTS + NUM_SPOT_LIGHTS; ++i)
+    {
+        ambient += gLights[i].Ambient * gMatDiffuseAlbedo;
+    }
+#endif 
 
-	const float shininess = 1.0f - gRoughness;
+	const float shininess = 1.0f - gMatRoughness;
 	float3 shadowFactor = 1.0f;
-	Material mat = { gDiffuseAlbedo, gFresnel, shininess };
+	Material mat = { gMatDiffuseAlbedo, gMatFresnel, shininess };
     float4 directLight = ComputeLighting(gLights, mat, pin.PosW, pin.NormalW, toEyeW, shadowFactor);
 
-    float4 litColor = ambient + directLight;
+    float4 litColor = texColor;
+    litColor *= ambient + directLight;
 
-    litColor.a = gDiffuseAlbedo.a;
-    litColor *= texColor;
+
+
+    // Fog
+    float fogLerp = saturate((distToEye - gFogStart) / gFogRange);
+    litColor = lerp(litColor, gFogColor, fogLerp);
+
+
+
+    litColor.a = gMatDiffuseAlbedo.a;
 
     return litColor;
 }

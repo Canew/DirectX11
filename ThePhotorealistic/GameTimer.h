@@ -3,6 +3,13 @@
 class GameTimer
 {
 public:
+	static GameTimer* StaticClass()
+	{
+		static GameTimer gameTimer;
+		return &gameTimer;
+	}
+
+public:
 	GameTimer();
 
 	float TotalTime() const;

@@ -5,7 +5,11 @@
 class Camera
 {
 public:
-	static Camera* GetInstance();
+	static Camera* StaticClass()
+	{
+		static Camera camera;
+		return &camera;
+	}
 
 public:
 	void UpdateClientSize(int width, int height);
