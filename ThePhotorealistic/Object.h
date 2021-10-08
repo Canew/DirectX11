@@ -13,11 +13,13 @@ protected:
 	struct Material
 	{
 		XMFLOAT4 DiffuseAlbedo;
-		XMFLOAT3 Fresnel;
+		float Fresnel0;
+		float Metallic;
 		float Roughness;
+		float padding = 0.0f;
 
-		Material(const XMFLOAT4& diffuseAlbedo, const XMFLOAT3& fresnel, const float roughness)
-			: DiffuseAlbedo(diffuseAlbedo), Fresnel(fresnel), Roughness(roughness) {}
+		Material(const XMFLOAT4& diffuseAlbedo, const float fresnel0, const float metallic, const float roughness)
+			: DiffuseAlbedo(diffuseAlbedo), Fresnel0(fresnel0), Metallic(metallic), Roughness(roughness) {}
 	};
 	struct ObjectMatrix
 	{
@@ -40,7 +42,11 @@ public:
 	virtual void SetScale(float x, float y, float z);
 	virtual void SetScale(XMFLOAT3 scale);
 
-	virtual void SetMaterial(XMFLOAT4 diffuseAlbedo, XMFLOAT3 fresnel, float roughness);
+	virtual void SetMaterial(XMFLOAT4 diffuseAlbedo, float fresnel0, float metallic, float roughness);
+	virtual void SetAlbedo(XMFLOAT4 diffuseAlbedo);
+	virtual void SetFresnel0(float fresnel0);
+	virtual void SetMetallic(float metallic);
+	virtual void SetRoughness(float roughness);
 	virtual void SetTexture(ID3D11Device& device, const WCHAR* filename);
 	virtual void SetShaderClass(Shader* shader);
 

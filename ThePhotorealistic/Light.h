@@ -6,15 +6,15 @@ class Light
 {
     enum class Type
     {
-        DirectionalLight = 0,
-        PointLight = 1,
-        SpotLight = 2
+        DirectionalLight,
+        PointLight,
+        SpotLight
     };
     struct LightBuffer
     {
         XMFLOAT4 Ambient;
         XMFLOAT4 Diffuse;
-        XMFLOAT3 Strength;
+        XMFLOAT3 Intensity;
         float FalloffStart;           // point/spot light only
         XMFLOAT3 Direction;    // directional/spot light only
         float FalloffEnd;            // point/spot light only
@@ -36,7 +36,7 @@ private:
     Type mLightType;
     XMFLOAT4 mAmbient;
     XMFLOAT4 mDiffuse;
-    XMFLOAT3 mStrength;
+    XMFLOAT3 mIntensity;
     float mFalloffStart;           // point/spot light only
     XMFLOAT3 mDirection;    // directional/spot light only
     float mFalloffEnd;            // point/spot light only

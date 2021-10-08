@@ -1,18 +1,4 @@
 
-#define MaxLights 16
-#ifndef NUM_DIR_LIGHTS
-	#define NUM_DIR_LIGHTS 1
-#endif
-
-#ifndef NUM_POINT_LIGHTS
-	#define NUM_POINT_LIGHTS 0
-#endif
-
-#ifndef NUM_SPOT_LIGHTS
-	#define NUM_SPOT_LIGHTS 0
-#endif
-
-
 Texture2D    gDiffuseMap : register(t0);
 
 
@@ -24,12 +10,11 @@ SamplerState gAnisotropicWrapSampler : register(s4);
 SamplerState gAnisotropicClampSampler : register(s5);
 
 
-
 struct Light
 {
     float4 Ambient;
     float4 Diffuse;
-	float3 Strength;
+	float3 Intensity;
 	float FalloffStart;           // point/spot light only
 	float3 Direction;    // directional/spot light only
 	float FalloffEnd;            // point/spot light only
@@ -37,163 +22,14 @@ struct Light
 	float SpotPower;          // spot light only
 };
 
-struct Material
-{
-	float4 DiffuseAlbedo;
-	float3 Fresnel;
-	float Shininess;
-};
-
-float CalcAttenuation(float d, float falloffStart, float falloffEnd)
-{
-    // Linear falloff.
-    return saturate((falloffEnd - d) / (falloffEnd - falloffStart));
-}
-
-// Schlick gives an approximation to Fresnel reflectance (see pg. 233 "Real-Time Rendering 3rd Ed.").
-// R0 = ( (n-1)/(n+1) )^2, where n is the index of refraction.
-float3 SchlickFresnel(float3 R0, float3 normal, float3 lightVec)
-{
-    float cosIncidentAngle = saturate(dot(normal, lightVec));
-
-    float f0 = 1.0f - cosIncidentAngle;
-    float3 reflectPercent = R0 + (1.0f - R0) * (f0 * f0 * f0 * f0 * f0);
-
-    return reflectPercent;
-}
-
-float3 BlinnPhong(float3 lightStrength, float3 lightVec, float3 normal, float3 toEye, Material mat)
-{
-    const float m = mat.Shininess * 256.0f;
-    float3 halfVec = normalize(toEye + lightVec);
-
-    float roughnessFactor = (m + 8.0f) * pow(max(dot(halfVec, normal), 0.0f), m) / 8.0f;
-    float3 fresnelFactor = SchlickFresnel(mat.Fresnel, halfVec, lightVec);
-
-    float3 specAlbedo = fresnelFactor * roughnessFactor;
-
-    // Our spec formula goes outside [0,1] range, but we are 
-    // doing LDR rendering.  So scale it down a bit.
-    specAlbedo = specAlbedo / (specAlbedo + 1.0f);
-
-    return (mat.DiffuseAlbedo.rgb + specAlbedo) * lightStrength;
-}
-
-//---------------------------------------------------------------------------------------
-// Evaluates the lighting equation for directional lights.
-//---------------------------------------------------------------------------------------
-float3 ComputeDirectionalLight(Light L, Material mat, float3 normal, float3 toEye)
-{
-    // The light vector aims opposite the direction the light rays travel.
-    float3 lightVec = -L.Direction;
-
-    // Scale light down by Lambert's cosine law.    
-    float ndotl = max(dot(lightVec, normal), 0.0f);
-    float3 lightStrength = L.Strength * ndotl;
-
-    return BlinnPhong(lightStrength, lightVec, normal, toEye, mat);
-}
-
-//---------------------------------------------------------------------------------------
-// Evaluates the lighting equation for point lights.
-//---------------------------------------------------------------------------------------
-float3 ComputePointLight(Light L, Material mat, float3 pos, float3 normal, float3 toEye)
-{
-    // The vector from the surface to the light.
-    float3 lightVec = L.Position - pos;
-
-    // The distance from surface to light.
-    float d = length(lightVec);
-
-    // Range test.
-    if (d > L.FalloffEnd)
-        return 0.0f;
-
-    // Normalize the light vector.
-    lightVec /= d;
-
-    // Scale light down by Lambert's cosine law.
-    float ndotl = max(dot(lightVec, normal), 0.0f);
-    float3 lightStrength = L.Strength * ndotl;
-
-    // Attenuate light by distance.
-    float att = CalcAttenuation(d, L.FalloffStart, L.FalloffEnd);
-    lightStrength *= att;
-
-    return BlinnPhong(lightStrength, lightVec, normal, toEye, mat);
-}
-
-//---------------------------------------------------------------------------------------
-// Evaluates the lighting equation for spot lights.
-//---------------------------------------------------------------------------------------
-float3 ComputeSpotLight(Light L, Material mat, float3 pos, float3 normal, float3 toEye)
-{
-    // The vector from the surface to the light.
-    float3 lightVec = L.Position - pos;
-
-    // The distance from surface to light.
-    float d = length(lightVec);
-
-    // Range test.
-    if (d > L.FalloffEnd)
-        return 0.0f;
-
-    // Normalize the light vector.
-    lightVec /= d;
-
-    // Scale light down by Lambert's cosine law.
-    float ndotl = max(dot(lightVec, normal), 0.0f);
-    float3 lightStrength = L.Strength * ndotl;
-
-    // Attenuate light by distance.
-    float att = CalcAttenuation(d, L.FalloffStart, L.FalloffEnd);
-    lightStrength *= att;
-
-    // Scale by spotlight
-    float spotFactor = pow(max(dot(-lightVec, L.Direction), 0.0f), L.SpotPower);
-    lightStrength *= spotFactor;
-
-    return BlinnPhong(lightStrength, lightVec, normal, toEye, mat);
-}
-
-float4 ComputeLighting(Light gLights[MaxLights], Material mat,
-    float3 pos, float3 normal, float3 toEye,
-    float3 shadowFactor)
-{
-    float3 result = 0.0f;
-
-    int i = 0;
-
-    [unroll]
-#if (NUM_DIR_LIGHTS > 0)
-    for (i = 0; i < NUM_DIR_LIGHTS; ++i)
-    {
-        result += shadowFactor[i] * ComputeDirectionalLight(gLights[i], mat, normal, toEye);
-    }
-#endif
-
-#if (NUM_POINT_LIGHTS > 0)
-    for (i = NUM_DIR_LIGHTS; i < NUM_DIR_LIGHTS + NUM_POINT_LIGHTS; ++i)
-    {
-        result += ComputePointLight(gLights[i], mat, pos, normal, toEye);
-    }
-#endif
-
-#if (NUM_SPOT_LIGHTS > 0)
-    for (i = NUM_DIR_LIGHTS + NUM_POINT_LIGHTS; i < NUM_DIR_LIGHTS + NUM_POINT_LIGHTS + NUM_SPOT_LIGHTS; ++i)
-    {
-        result += ComputeSpotLight(gLights[i], mat, pos, normal, toEye);
-    }
-#endif 
-
-    return float4(result, 0.0f);
-}
 
 cbuffer cbMaterial : register(b0)
 {
-	float4 gMatDiffuseAlbedo;
-	float3 gMatFresnel;
-	float gMatRoughness;
+	float4 gDiffuseAlbedo;
+	float gFresnel0;
+    float gMetallic;
+	float gRoughness;
+    float padding;
 };
 
 cbuffer cbPass : register(b1)
@@ -201,7 +37,7 @@ cbuffer cbPass : register(b1)
 	float3 gEyePosW;
 	float pad;
 
-	Light gLights[MaxLights];
+    Light gLight;
 
     float gFogStart;
     float gFogRange;
@@ -217,10 +53,56 @@ struct PixelIn
 	float2 TexC : TEXCOORD;
 };
 
+static const float pi = 3.14159265f;
+static const float gamma = 2.2f;
+
+// return Specular D
+float NDF(float3 normal, float3 halfNormal)
+{
+    float alpha = pow(gRoughness, 2);
+    float ndoth = saturate(dot(normal, halfNormal));
+
+    float numerator = alpha * alpha;
+    float denominator = (ndoth * ndoth) * (alpha * alpha - 1.0f) + 1.0f;
+    denominator = pi * pow(denominator, 2);
+
+    return numerator / denominator;
+}
+
+// return Specular G
+float GeometrySchlickGGX(float ndotx)
+{
+    float r = gRoughness + 1.0f;
+    float k = (r * r) / 8.0f;
+
+    float numerator = ndotx;
+    float denominator = ndotx * (1.0f - k) + k;
+
+    return numerator /  denominator;
+}
+
+float GeometryShadow(float3 normal, float3 toLight, float3 toEye)
+{
+    float ndotv = saturate(dot(normal, toEye));
+    float ndotl = saturate(dot(normal, toLight));
+
+    float ggx1 = GeometrySchlickGGX(ndotv);
+    float ggx2 = GeometrySchlickGGX(ndotl);
+
+    return ggx1 * ggx2;
+}
+
+// return Specular F
+float SchlickFresnel(float3 halfNormal, float3 toLight)
+{
+    return gFresnel0 + ((1 - gFresnel0) * pow((1 - saturate(dot(halfNormal, toLight))), 5));
+}
 
 float4 main(PixelIn pin) : SV_Target
 {
+    float4 litColor = { 0.0f, 0.0f, 0.0f, 0.0f };
     float4 texColor = gDiffuseMap.Sample(gAnisotropicWrapSampler, pin.TexC);
+    texColor = pow(texColor, gamma);
     clip(texColor.a - 0.1f);
 
     float3 toEyeW = gEyePosW - pin.PosW;
@@ -228,44 +110,51 @@ float4 main(PixelIn pin) : SV_Target
     toEyeW /= distToEye;
 
     // Lighting
-    float4 ambient = { 0.0f, 0.0f, 0.0f, 0.0f };
-    [unroll]
-#if (NUM_DIR_LIGHTS > 0)
-    for (int i = 0; i < NUM_DIR_LIGHTS; ++i)
-    {
-        ambient += gLights[i].Ambient * gMatDiffuseAlbedo;
-    }
-#endif
-#if (NUM_POINT_LIGHTS > 0)
-    for (int i = NUM_DIR_LIGHTS; i < NUM_DIR_LIGHTS + NUM_POINT_LIGHTS; ++i)
-    {
-        ambient += gLights[i].Ambient * gMatDiffuseAlbedo;
-    }
-#endif
-#if (NUM_SPOT_LIGHTS > 0)
-    for (int i = NUM_DIR_LIGHTS + NUM_POINT_LIGHTS; i < NUM_DIR_LIGHTS + NUM_POINT_LIGHTS + NUM_SPOT_LIGHTS; ++i)
-    {
-        ambient += gLights[i].Ambient * gMatDiffuseAlbedo;
-    }
-#endif 
+    // Attenuation
+    float distance = length(gLight.Position - pin.PosW);
+    float attenuation = 1.0f / (distance * distance);
+    //float3 radiance = gLight.Diffuse.xyz * gLight.Intensity * attenuation;
+    float3 radiance = { 1.0f, 1.0f, 1.0f };
+    
+    // Ambient
+    //litColor = gLight.Ambient;
 
-	const float shininess = 1.0f - gMatRoughness;
-	float3 shadowFactor = 1.0f;
-	Material mat = { gMatDiffuseAlbedo, gMatFresnel, shininess };
-    float4 directLight = ComputeLighting(gLights, mat, pin.PosW, pin.NormalW, toEyeW, shadowFactor);
+    // Diffuse BRDF
+    float ndotl = saturate(dot(pin.NormalW, -gLight.Direction));// * 0.5f + 0.5f; // Half Lambert
+    float3 diffuse = (saturate(texColor.xyz * ndotl));
 
-    float4 litColor = texColor;
-    litColor *= ambient + directLight;
+    // Specular BRDF
+    float3 halfNormal = normalize(-gLight.Direction + toEyeW);
 
+    // Specular D
+    float specularD = NDF(pin.NormalW, halfNormal);
 
+    // Specular G
+    float specularG = GeometryShadow(pin.NormalW, -gLight.Direction, toEyeW);
+
+    // Specular F
+    float specularF = SchlickFresnel(halfNormal, -gLight.Direction);
+
+    // Calculate Specular
+    float3 specular = (specularD * specularG * specularF) / pi * dot(pin.NormalW, -gLight.Direction) * dot(pin.NormalW, toEyeW) + 0.001f;
+    
+    // Energy Conservation
+    float3 kS = specularF;
+    float3 kD = 1.0f - kS;
+    kD *= 1.0 - gMetallic;
+
+    // Calculate Radiance
+    float3 rad = ((kD * diffuse / pi) + specular) * radiance * dot(-gLight.Direction, pin.NormalW);
+    litColor.xyz += rad;
+
+    // Gamma Correction
+    litColor.xyz = pow(litColor.xyz, float3(1.0f / gamma, 1.0f / gamma, 1.0f / gamma));
 
     // Fog
     float fogLerp = saturate((distToEye - gFogStart) / gFogRange);
     litColor = lerp(litColor, gFogColor, fogLerp);
 
-
-
-    litColor.a = gMatDiffuseAlbedo.a;
+    litColor.a = gDiffuseAlbedo.a;
 
     return litColor;
 }

@@ -12,10 +12,10 @@ Sky::Sky(ID3D11Device& device, ID3D11DeviceContext& deviceContext, float skySphe
 void Sky::Render(ID3D11DeviceContext& deviceContext)
 {
 	// center Sky about eye in world space
-	XMFLOAT3 eyePos = Camera::StaticClass()->GetPosition();
+	XMFLOAT3 eyePos = Camera::GetInstance()->GetPosition();
 	XMMATRIX world = XMMatrixTranslation(eyePos.x, eyePos.y, eyePos.z);
-	XMMATRIX view = Camera::StaticClass()->GetView();
-	XMMATRIX projection = Camera::StaticClass()->GetProjection();
+	XMMATRIX view = Camera::GetInstance()->GetView();
+	XMMATRIX projection = Camera::GetInstance()->GetProjection();
 
 	world = XMMatrixTranspose(world);
 	view = XMMatrixTranspose(view);

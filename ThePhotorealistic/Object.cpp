@@ -6,7 +6,7 @@
 #include "Object.h"
 
 Object::Object(ID3D11Device& device, ID3D11DeviceContext& deviceContext, std::string_view filepath)
-	: mTexture(device), mMaterial(XMFLOAT4(0.5f, 0.5f, 0.5f, 0.1f), XMFLOAT3(0.05f, 0.05f, 0.05f), 0.1f), mShaderClass(BasicShader::StaticClass()), mDevice(device), mDeviceContext(deviceContext)
+	: mTexture(device), mMaterial(XMFLOAT4(0.5f, 0.5f, 0.5f, 0.1f), 0.04f, 0.0f, 0.1f), mShaderClass(BasicShader::StaticClass()), mDevice(device), mDeviceContext(deviceContext)
 {
 	if (!filepath.empty())
 	{
@@ -51,8 +51,8 @@ void Object::Render(ID3D11DeviceContext& deviceContext)
 	world *= XMMatrixScaling(mScale.x, mScale.y, mScale.z);
 	world *= XMMatrixRotationRollPitchYaw(mRotation.x, mRotation.y, mRotation.z);
 	world *= XMMatrixTranslation(mPosition.x, mPosition.y, mPosition.z);
-	XMMATRIX view = Camera::StaticClass()->GetView();
-	XMMATRIX projection = Camera::StaticClass()->GetProjection();
+	XMMATRIX view = Camera::GetInstance()->GetView();
+	XMMATRIX projection = Camera::GetInstance()->GetProjection();
 
 	world = XMMatrixTranspose(world);
 	view = XMMatrixTranspose(view);
@@ -77,7 +77,8 @@ void Object::Render(ID3D11DeviceContext& deviceContext)
 
 	Material* materialBufferPtr = reinterpret_cast<Material*>(mappedResource.pData);
 	materialBufferPtr->DiffuseAlbedo = mMaterial.DiffuseAlbedo;
-	materialBufferPtr->Fresnel = mMaterial.Fresnel;
+	materialBufferPtr->Fresnel0 = mMaterial.Fresnel0;
+	materialBufferPtr->Metallic = mMaterial.Metallic;
 	materialBufferPtr->Roughness = mMaterial.Roughness;
 
 	deviceContext.Unmap(mMaterialBuffer.Get(), 0);
@@ -131,10 +132,31 @@ void Object::SetScale(XMFLOAT3 scale)
 	mScale = scale;
 }
 
-void Object::SetMaterial(XMFLOAT4 diffuseAlbedo, XMFLOAT3 fresnel, float roughness)
+void Object::SetMaterial(XMFLOAT4 diffuseAlbedo, float fresnel0, float metallic, float roughness)
 {
 	mMaterial.DiffuseAlbedo = diffuseAlbedo;
-	mMaterial.Fresnel = fresnel;
+	mMaterial.Fresnel0 = fresnel0;
+	mMaterial.Metallic = metallic;
+	mMaterial.Roughness = roughness;
+}
+
+void Object::SetAlbedo(XMFLOAT4 diffuseAlbedo)
+{
+	mMaterial.DiffuseAlbedo = diffuseAlbedo;
+}
+
+void Object::SetFresnel0(float fresnel0)
+{
+	mMaterial.Fresnel0 = fresnel0;
+}
+
+void Object::SetMetallic(float metallic)
+{
+	mMaterial.Metallic = metallic;
+}
+
+void Object::SetRoughness(float roughness)
+{
 	mMaterial.Roughness = roughness;
 }
 
@@ -168,8 +190,23 @@ void Object::LoadModel(std::string_view filepath)
 	{
 		throw std::exception();
 	}
-
+	
 	ProcessNode(pScene->mRootNode, pScene);
+
+	if (pScene->HasMaterials())
+	{
+		for (unsigned int i = 0; i < pScene->mNumMaterials; i++)
+		{
+			const aiMaterial* material = pScene->mMaterials[i];
+			aiString texturePath;
+
+			material->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath);
+			if (const aiTexture* pTexture = pScene->GetEmbeddedTexture(texturePath.C_Str()))
+			{
+				mTexture = Texture(mDevice, pTexture);
+			}
+		}
+	}
 }
 
 void Object::ProcessNode(aiNode* node, const aiScene* scene)
@@ -196,20 +233,24 @@ Mesh Object::ProcessMesh(aiMesh* mesh, const aiScene* scene)
 	{
 		Vertex vertex;
 
-		vertex.Position.x = mesh->mVertices[i].x;
-		vertex.Position.y = mesh->mVertices[i].y;
-		vertex.Position.z = mesh->mVertices[i].z;
+		if (mesh->HasPositions())
+		{
+			vertex.Position.x = mesh->mVertices[i].x;
+			vertex.Position.y = mesh->mVertices[i].y;
+			vertex.Position.z = mesh->mVertices[i].z;
+		}
 
+		if (mesh->HasNormals())
+		{
+			vertex.Normal.x = mesh->mNormals[i].x;
+			vertex.Normal.y = mesh->mNormals[i].y;
+			vertex.Normal.z = mesh->mNormals[i].z;
+		}
 		
 		if (mesh->HasTextureCoords(0))
 		{
 			vertex.TexC.x = static_cast<float>(mesh->mTextureCoords[0][i].x);
 			vertex.TexC.y = static_cast<float>(mesh->mTextureCoords[0][i].y);
-		}
-		else
-		{
-			vertex.TexC.x = 0.0f;
-			vertex.TexC.y = 0.0f;
 		}
 
 		vertices.push_back(vertex);

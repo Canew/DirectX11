@@ -5,7 +5,7 @@
 class Camera
 {
 public:
-	static Camera* StaticClass()
+	static Camera* GetInstance()
 	{
 		static Camera camera;
 		return &camera;

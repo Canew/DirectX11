@@ -116,7 +116,7 @@ bool ThePhotorealistic::Init()
 		return false;
 
 	GameTimer::StaticClass();
-	Camera::StaticClass();
+	Camera::GetInstance();
 
 	BasicShader::StaticClass()->Init(*md3dDevice.Get());
 	SkyShader::StaticClass()->Init(*md3dDevice.Get());
@@ -221,10 +221,10 @@ void ThePhotorealistic::ProcessInput(float dt)
 		float deltaX = static_cast<float>(cursorPos.x) - centerPos.x;
 		float deltaY = static_cast<float>(cursorPos.y) - centerPos.y;
 
-		XMFLOAT3 cameraRotation = Camera::StaticClass()->GetRotation();
+		XMFLOAT3 cameraRotation = Camera::GetInstance()->GetRotation();
 		cameraRotation.y += deltaX;
 		cameraRotation.z += deltaY;
-		Camera::StaticClass()->SetRotation(cameraRotation);
+		Camera::GetInstance()->SetRotation(cameraRotation);
 
 		// Set mouse coordinates to center of window
 		SetCursorPos(horizonCenter, verticalCenter);
@@ -237,46 +237,46 @@ void ThePhotorealistic::ProcessInput(float dt)
 	// Process keyboard input
 	if (GetAsyncKeyState('W') & 0x8000)
 	{
-		XMFLOAT3 currentPosition = Camera::StaticClass()->GetPosition();
+		XMFLOAT3 currentPosition = Camera::GetInstance()->GetPosition();
 		currentPosition.x += 50.0f * dt;
-		Camera::StaticClass()->SetPosition(currentPosition);
+		Camera::GetInstance()->SetPosition(currentPosition);
 	}
 	if (GetAsyncKeyState('S') & 0x8000)
 	{
-		XMFLOAT3 currentPosition = Camera::StaticClass()->GetPosition();
+		XMFLOAT3 currentPosition = Camera::GetInstance()->GetPosition();
 		currentPosition.x -= 50.0f * dt;
-		Camera::StaticClass()->SetPosition(currentPosition);
+		Camera::GetInstance()->SetPosition(currentPosition);
 	}
 	if (GetAsyncKeyState('A') & 0x8000)
 	{
-		XMFLOAT3 currentPosition = Camera::StaticClass()->GetPosition();
+		XMFLOAT3 currentPosition = Camera::GetInstance()->GetPosition();
 		currentPosition.z += 50.0f * dt;
-		Camera::StaticClass()->SetPosition(currentPosition);
+		Camera::GetInstance()->SetPosition(currentPosition);
 	}
 	if (GetAsyncKeyState('D') & 0x8000)
 	{
-		XMFLOAT3 currentPosition = Camera::StaticClass()->GetPosition();
+		XMFLOAT3 currentPosition = Camera::GetInstance()->GetPosition();
 		currentPosition.z -= 50.0f * dt;
-		Camera::StaticClass()->SetPosition(currentPosition);
+		Camera::GetInstance()->SetPosition(currentPosition);
 	}
 	if (GetAsyncKeyState('Q') & 0x8000)
 	{
-		XMFLOAT3 currentPosition = Camera::StaticClass()->GetPosition();
+		XMFLOAT3 currentPosition = Camera::GetInstance()->GetPosition();
 		currentPosition.y += 50.0f * dt;
-		Camera::StaticClass()->SetPosition(currentPosition);
+		Camera::GetInstance()->SetPosition(currentPosition);
 	}
 	if (GetAsyncKeyState('E') & 0x8000)
 	{
-		XMFLOAT3 currentPosition = Camera::StaticClass()->GetPosition();
+		XMFLOAT3 currentPosition = Camera::GetInstance()->GetPosition();
 		currentPosition.y -= 50.0f * dt;
-		Camera::StaticClass()->SetPosition(currentPosition);
+		Camera::GetInstance()->SetPosition(currentPosition);
 	}
 }
 
 void ThePhotorealistic::UpdateScene(float dt)
 {
-	Camera::StaticClass()->UpdateViewMatrix();
-	Camera::StaticClass()->UpdateProjectionMatrix();
+	Camera::GetInstance()->UpdateViewMatrix();
+	Camera::GetInstance()->UpdateProjectionMatrix();
 
 	mScene->Update(*md3dImmediateContext.Get(), dt);
 }
@@ -286,7 +286,7 @@ void ThePhotorealistic::DrawScene()
 	assert(md3dImmediateContext);
 	assert(mSwapChain);
 
-	float color[4] = { 0.05f, 0.05f, 0.15f, 1.0f };
+	float color[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 	md3dImmediateContext->ClearRenderTargetView(mRenderTargetView.Get(), color);
 	md3dImmediateContext->ClearDepthStencilView(mDepthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
@@ -322,7 +322,7 @@ LRESULT ThePhotorealistic::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 		mClientHeight = HIWORD(lParam);
 
 		// Update Camera
-		Camera::StaticClass()->UpdateClientSize(mClientWidth, mClientHeight);
+		Camera::GetInstance()->UpdateClientSize(mClientWidth, mClientHeight);
 
 		if (md3dDevice)
 		{

@@ -24,7 +24,7 @@ void Light::SetConstantBuffer(ID3D11DeviceContext& deviceContext)
 	LightBuffer* lightBufferPtr = reinterpret_cast<LightBuffer*>(mappedResource.pData);
 	lightBufferPtr->Ambient = mAmbient;
 	lightBufferPtr->Diffuse = mDiffuse;
-	lightBufferPtr->Strength = mStrength;
+	lightBufferPtr->Intensity = mIntensity;
 	lightBufferPtr->FalloffStart = mFalloffStart;
 	lightBufferPtr->Direction = mDirection;
 	lightBufferPtr->FalloffEnd = mFalloffEnd;

@@ -17,12 +17,12 @@ class Scene
 		XMFLOAT3 Position;     // point light only
 		float SpotPower;          // spot light only
 	};
-	struct Pass
+	struct LightingPass
 	{
 		XMFLOAT3 EyePosition;
 		float Pad1;
 
-		Light Lights[16];
+		Light Light;
 
 		float FogStart;
 		float FogRange;
