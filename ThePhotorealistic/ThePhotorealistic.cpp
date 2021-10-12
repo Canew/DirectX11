@@ -199,6 +199,10 @@ void ThePhotorealistic::OnResize()
 	mScreenViewport.MaxDepth = 1.0f;
 
 	md3dImmediateContext->RSSetViewports(1, &mScreenViewport);
+
+	RECT clientRect;
+	GetClientRect(mhMainWnd, &clientRect);
+	Camera::GetInstance()->SetLens(0.25f * XM_PI, (clientRect.right - clientRect.left) / (clientRect.bottom - clientRect.top), 1.0f, 1000.0f);
 }
 
 void ThePhotorealistic::ProcessInput(float dt)
@@ -221,10 +225,8 @@ void ThePhotorealistic::ProcessInput(float dt)
 		float deltaX = static_cast<float>(cursorPos.x) - centerPos.x;
 		float deltaY = static_cast<float>(cursorPos.y) - centerPos.y;
 
-		XMFLOAT3 cameraRotation = Camera::GetInstance()->GetRotation();
-		cameraRotation.y += deltaX;
-		cameraRotation.z += deltaY;
-		Camera::GetInstance()->SetRotation(cameraRotation);
+		Camera::GetInstance()->RotateY(deltaX * dt);
+		Camera::GetInstance()->Pitch(deltaY * dt);
 
 		// Set mouse coordinates to center of window
 		SetCursorPos(horizonCenter, verticalCenter);
@@ -237,27 +239,27 @@ void ThePhotorealistic::ProcessInput(float dt)
 	// Process keyboard input
 	if (GetAsyncKeyState('W') & 0x8000)
 	{
-		XMFLOAT3 currentPosition = Camera::GetInstance()->GetPosition();
-		currentPosition.x += 50.0f * dt;
-		Camera::GetInstance()->SetPosition(currentPosition);
+		float velocity = 50.0f * dt;
+
+		Camera::GetInstance()->Walk(velocity);
 	}
 	if (GetAsyncKeyState('S') & 0x8000)
 	{
-		XMFLOAT3 currentPosition = Camera::GetInstance()->GetPosition();
-		currentPosition.x -= 50.0f * dt;
-		Camera::GetInstance()->SetPosition(currentPosition);
+		float velocity = -50.0f * dt;
+
+		Camera::GetInstance()->Walk(velocity);
 	}
 	if (GetAsyncKeyState('A') & 0x8000)
 	{
-		XMFLOAT3 currentPosition = Camera::GetInstance()->GetPosition();
-		currentPosition.z += 50.0f * dt;
-		Camera::GetInstance()->SetPosition(currentPosition);
+		float velocity = -50.0f * dt;
+
+		Camera::GetInstance()->Strafe(velocity);
 	}
 	if (GetAsyncKeyState('D') & 0x8000)
 	{
-		XMFLOAT3 currentPosition = Camera::GetInstance()->GetPosition();
-		currentPosition.z -= 50.0f * dt;
-		Camera::GetInstance()->SetPosition(currentPosition);
+		float velocity = 50.0f * dt;
+
+		Camera::GetInstance()->Strafe(velocity);
 	}
 	if (GetAsyncKeyState('Q') & 0x8000)
 	{
@@ -276,7 +278,6 @@ void ThePhotorealistic::ProcessInput(float dt)
 void ThePhotorealistic::UpdateScene(float dt)
 {
 	Camera::GetInstance()->UpdateViewMatrix();
-	Camera::GetInstance()->UpdateProjectionMatrix();
 
 	mScene->Update(*md3dImmediateContext.Get(), dt);
 }
@@ -320,9 +321,6 @@ LRESULT ThePhotorealistic::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 		// Save the new client area dimensions.
 		mClientWidth = LOWORD(lParam);
 		mClientHeight = HIWORD(lParam);
-
-		// Update Camera
-		Camera::GetInstance()->UpdateClientSize(mClientWidth, mClientHeight);
 
 		if (md3dDevice)
 		{

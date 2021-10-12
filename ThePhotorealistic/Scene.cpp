@@ -23,6 +23,7 @@ Scene::Scene(ID3D11Device& device, ID3D11DeviceContext& deviceContext)
     auto pGround = std::make_unique<Grid>(device, deviceContext, 300.0f, 300.0f, 300, 300);
     pGround->SetTexture(device, L"Texture/gravel_diffuse.dds");
     pGround->SetPosition(0.0f, 0.0f, 0.0f);
+    pGround->SetRoughness(0.9f);
     mObjectList.push_back(std::move(pGround));
 
     // Cube
