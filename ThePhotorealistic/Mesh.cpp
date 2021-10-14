@@ -35,11 +35,15 @@ Mesh::Mesh(ID3D11Device& device, ID3D11DeviceContext& deviceContext, std::vector
 	iinitData.pSysMem = indices.data();
 
 	device.CreateBuffer(&ibd, &iinitData, mIndexBuffer.GetAddressOf());
+
+	
 }
 
 Mesh::Mesh(const Mesh& mesh) 
 	: mDeviceContext(mesh.mDeviceContext)
 {
+	mVertices = mesh.mVertices;
+	mIndices = mesh.mIndices;
 	mVertexBuffer = mesh.mVertexBuffer;
 	mIndexBuffer = mesh.mIndexBuffer;
 	mNumVertices = mesh.mNumVertices;

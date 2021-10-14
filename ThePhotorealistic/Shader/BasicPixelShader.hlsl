@@ -1,6 +1,6 @@
 
 Texture2D    gDiffuseMap : register(t0);
-
+TextureCube gCubeMap : register(t1);
 
 SamplerState gPointWrapSampler : register(s0);
 SamplerState gPointClampSampler : register(s1);
@@ -134,6 +134,8 @@ float4 main(PixelIn pin) : SV_Target
 
     // Specular F
     float specularF = SchlickFresnel(halfNormal, -gLight.Direction);
+    float metalBaseColor = { 0.9f };
+    specularF = lerp(0.08 * specularF, metalBaseColor, gMetallic);
 
     // Calculate Specular
     float3 specular = (specularD * specularG * specularF) / pi * dot(pin.NormalW, -gLight.Direction) * dot(pin.NormalW, toEyeW) + 0.001f;
@@ -143,9 +145,17 @@ float4 main(PixelIn pin) : SV_Target
     float3 kD = 1.0f - kS;
     kD *= 1.0 - gMetallic;
 
+    // Calculate Reflect
+    float3 incident = -toEyeW;
+    float3 reflectionVector = reflect(incident, pin.NormalW);
+    float4 reflectionColor = gCubeMap.Sample(gAnisotropicWrapSampler, reflectionVector);
+
+    specular += saturate(specularF * (1.0f - gRoughness) * reflectionColor.xyz);
+
     // Calculate Radiance
     float3 rad = ((kD * diffuse / pi) + specular) * radiance * dot(-gLight.Direction, pin.NormalW);
     litColor.xyz += rad;
+    
 
     // Gamma Correction
     litColor.xyz = pow(litColor.xyz, float3(1.0f / gamma, 1.0f / gamma, 1.0f / gamma));

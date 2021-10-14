@@ -43,10 +43,14 @@ Object::Object(ID3D11Device& device, ID3D11DeviceContext& deviceContext, std::st
 
 void Object::Update(ID3D11DeviceContext& deviceContext, float dt)
 {
+	
 }
 
 void Object::Render(ID3D11DeviceContext& deviceContext)
 {
+	// Set shader before render.
+	GetShaderClass()->SetShader(deviceContext);
+
 	XMMATRIX world = XMMatrixIdentity();
 	world *= XMMatrixScaling(mScale.x, mScale.y, mScale.z);
 	world *= XMMatrixRotationRollPitchYaw(mRotation.x, mRotation.y, mRotation.z);
@@ -163,6 +167,11 @@ void Object::SetRoughness(float roughness)
 void Object::SetTexture(ID3D11Device& device, const WCHAR* filename)
 {
 	mTexture = Texture(device, filename);
+}
+
+void Object::SetTexture(Texture texture)
+{
+	mTexture = texture;
 }
 
 void Object::SetShaderClass(Shader* shader)

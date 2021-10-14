@@ -4,10 +4,12 @@
 Sphere::Sphere(ID3D11Device& device, ID3D11DeviceContext& deviceContext, float radius, UINT sliceCount, UINT stackCount)
 	: Object(device, deviceContext)
 {
+	std::vector<Vertex> vertices;
+	std::vector<unsigned int> indices;
+
 	//
 	// Compute the vertices stating at the top pole and moving down the stacks.
 	//
-	std::vector<Vertex> vertices;
 
 	// Poles: note that there will be texture coordinate distortion as there is
 	// not a unique point on the texture map to assign to the pole when mapping
@@ -49,12 +51,10 @@ Sphere::Sphere(ID3D11Device& device, ID3D11DeviceContext& deviceContext, float r
 
 	vertices.push_back(bottomVertex);
 
-
 	//
 	// Compute indices for top stack.  The top stack was written first to the vertex buffer
 	// and connects the top pole to the first ring.
 	//
-	std::vector<unsigned int> indices;
 
 	for (UINT i = 1; i <= sliceCount; ++i)
 	{
@@ -102,4 +102,6 @@ Sphere::Sphere(ID3D11Device& device, ID3D11DeviceContext& deviceContext, float r
 		indices.push_back(baseIndex + i);
 		indices.push_back(baseIndex + i + 1);
 	}
+
+	mMeshes.push_back(Mesh(device, deviceContext, vertices, indices));
 }

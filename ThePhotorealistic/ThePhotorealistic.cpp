@@ -202,7 +202,7 @@ void ThePhotorealistic::OnResize()
 
 	RECT clientRect;
 	GetClientRect(mhMainWnd, &clientRect);
-	Camera::GetInstance()->SetLens(0.25f * XM_PI, (clientRect.right - clientRect.left) / (clientRect.bottom - clientRect.top), 1.0f, 1000.0f);
+	Camera::GetInstance()->SetLens(0.25f * XM_PI, static_cast<float>(clientRect.right - clientRect.left) / (clientRect.bottom - clientRect.top), 1.0f, 1000.0f);
 }
 
 void ThePhotorealistic::ProcessInput(float dt)

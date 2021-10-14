@@ -7,7 +7,7 @@ Camera::Camera()
 	mUp(0.0f, 1.0f, 0.0f),
 	mLook(0.0f, 0.0f, 1.0f)
 {
-	SetLens(0.25f * XM_PI, 4.0f / 3.0f, 1.0f, 1000.0f);
+	SetLens(0.25f * XM_PI, 1.0f, 1.0f, 1000.0f);
 }
 
 XMFLOAT3 Camera::GetPosition()const

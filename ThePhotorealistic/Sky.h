@@ -12,5 +12,8 @@ public:
 	void Render(ID3D11DeviceContext& deviceContext) override;
 
 private:
-	std::vector<XMFLOAT3> mPositions;
+	std::vector<XMFLOAT3> mVertices;
+	std::vector<unsigned int> mIndices;
+	ComPtr<ID3D11Buffer> mVertexBuffer = nullptr;
+	ComPtr<ID3D11Buffer> mIndexBuffer = nullptr;
 };

@@ -33,7 +33,7 @@ void RenderState::Init(ID3D11Device& device)
 	ZeroMemory(&noCullDesc, sizeof(D3D11_RASTERIZER_DESC));
 	noCullDesc.FillMode = D3D11_FILL_SOLID;
 	noCullDesc.CullMode = D3D11_CULL_NONE;
-	noCullDesc.FrontCounterClockwise = false;
+	noCullDesc.FrontCounterClockwise = true;
 	noCullDesc.DepthClipEnable = true;
 
 	device.CreateRasterizerState(&noCullDesc, &NoCullRS);

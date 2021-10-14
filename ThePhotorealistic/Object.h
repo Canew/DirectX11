@@ -48,9 +48,12 @@ public:
 	virtual void SetMetallic(float metallic);
 	virtual void SetRoughness(float roughness);
 	virtual void SetTexture(ID3D11Device& device, const WCHAR* filename);
+	virtual void SetTexture(Texture texture);
 	virtual void SetShaderClass(Shader* shader);
 
 	virtual Shader* GetShaderClass();
+	virtual Texture& GetTexture() { return mTexture; }
+	virtual std::vector<Mesh> GetMeshes() { return mMeshes; }
 
 	bool IsTransparent();
 

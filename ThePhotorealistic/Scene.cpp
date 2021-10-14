@@ -33,14 +33,19 @@ Scene::Scene(ID3D11Device& device, ID3D11DeviceContext& deviceContext)
     mObjectList.push_back(std::move(pCube));
 
     // Sphere
+    Texture sphereTexture = Texture(device, L"Texture/divingBoardFloor_diffuse.dds");
     for (int i = 0; i <= 10; i++)
     {
-        auto pSphere = std::make_unique<Object>(device, deviceContext, "Model/BasicSphere.fbx");
-        pSphere->SetPosition(15.0f + i * 10.0f, 15.0f, 0.0f);
-        pSphere->SetScale(5.0f, 5.0f, 5.0f);
-        pSphere->SetRoughness(i * 0.1f);
-        pSphere->SetTexture(device, L"Texture/divingBoardFloor_diffuse.dds");
-        mObjectList.push_back(std::move(pSphere));
+        for (int j = 0; j <= 10; j++)
+        {
+            auto pSphere = std::make_unique<Object>(device, deviceContext, "Model/BasicSphere_Subdivide3.fbx");
+            pSphere->SetPosition(15.0f + i * 10.0f, 150.0f - j * 10.0f, 0.0f);
+            pSphere->SetScale(5.0f, 5.0f, 5.0f);
+            pSphere->SetRoughness(i * 0.1f);
+            pSphere->SetMetallic(1.0f - (j * 0.1f));
+            pSphere->SetTexture(sphereTexture);
+            mObjectList.push_back(std::move(pSphere));
+        }
     }
 
     // Fence
@@ -58,9 +63,9 @@ Scene::Scene(ID3D11Device& device, ID3D11DeviceContext& deviceContext)
     mObjectList.push_back(std::move(pModel));
 
     // Sky
-    std::unique_ptr<Sky> pSky = std::make_unique<Sky>(device, deviceContext, 5000.0f);
+    std::unique_ptr<Sky> pSky = std::make_unique<Sky>(device, deviceContext, 1000.0f);
     pSky->SetShaderClass(SkyShader::StaticClass());
-    pSky->SetTexture(device, L"Texture/sunsetcube1024.dds");
+    pSky->SetTexture(device, L"Texture/grasscube1024.dds");
     mSky = std::move(pSky);
 }
 
@@ -74,31 +79,19 @@ void Scene::Update(ID3D11DeviceContext& deviceContext, float dt)
 
 void Scene::Render(ID3D11DeviceContext& deviceContext)
 {
+    // Render object.
+    UpdateConstantBuffer(deviceContext);
+    deviceContext.PSSetShaderResources(1, 1, mSky->GetTexture().GetShaderResourceView().GetAddressOf());
+    deviceContext.OMSetDepthStencilState(0, 0);
+    for (auto& object : mObjectList)
+    {
+        object->Render(deviceContext);
+    }
+
     // Render sky.
     deviceContext.RSSetState(RenderState::NoCullRS.Get());
     deviceContext.OMSetDepthStencilState(RenderState::LessEqualDSS.Get(), 0);
-    mSky->GetShaderClass()->SetShader(deviceContext);
     mSky->Render(deviceContext);
-
-    // Render object.
-    for (auto& object : mObjectList)
-    {
-        UpdateConstantBuffer(deviceContext);
-
-        object->GetShaderClass()->SetShader(deviceContext);
-
-        // Set TransparentBS if object is transparent.
-        //if (object->IsTransparent())
-        //{
-        //    deviceContext.OMSetBlendState(RenderState::TransparentBS.Get(), RenderState::DefaultBlendFactor.get(), 0xffffffff);
-        //}
-
-        deviceContext.OMSetDepthStencilState(0, 0);
-        object->Render(deviceContext);
-
-        // return to defaultBS.
-        deviceContext.OMSetBlendState(0, RenderState::DefaultBlendFactor.get(), 0xffffffff);
-    }
 }
 
 void Scene::CreateConstantBuffer(ID3D11Device& device)

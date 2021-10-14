@@ -16,6 +16,8 @@ public:
 	unsigned int GetNumIndices() { return mNumIndices; }
 
 private:
+	std::vector<Vertex> mVertices;
+	std::vector<unsigned int> mIndices;
 	ComPtr<ID3D11Buffer> mVertexBuffer = nullptr;
 	ComPtr<ID3D11Buffer> mIndexBuffer = nullptr;
 	unsigned int mNumVertices = 0;

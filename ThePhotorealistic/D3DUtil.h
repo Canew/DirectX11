@@ -10,8 +10,11 @@
 #include <d3dcompiler.h>
 #include <d3dcommon.h>
 #include <DirectXMath.h>
+#include <DirectXCollision.h>
+#include <DirectXPackedVector.h>
 
 #include <wrl.h>
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
+using namespace DirectX::PackedVector;
