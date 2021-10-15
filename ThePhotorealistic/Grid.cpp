@@ -4,7 +4,7 @@
 Grid::Grid(ID3D11Device& device, ID3D11DeviceContext& deviceContext, float width, float depth, UINT m, UINT n)
 	: Object(device, deviceContext)
 {
-	UINT mVertexCount = m * n;
+	UINT mVerTexCoordount = m * n;
 	UINT faceCount = (m - 1) * (n - 1) * 2;
 
 	//
@@ -19,7 +19,7 @@ Grid::Grid(ID3D11Device& device, ID3D11DeviceContext& deviceContext, float width
 	float du = 1.0f / (n - 1);
 	float dv = 1.0f / (m - 1);
 
-	std::vector<Vertex>vertices(mVertexCount);
+	std::vector<Vertex>vertices(mVerTexCoordount);
 	for (UINT i = 0; i < m; ++i)
 	{
 		float z = halfDepth - i * dz;
@@ -29,10 +29,11 @@ Grid::Grid(ID3D11Device& device, ID3D11DeviceContext& deviceContext, float width
 
 			vertices[i * n + j].Position = XMFLOAT3(x, 0.0f, z);
 			vertices[i * n + j].Normal = XMFLOAT3(0.0f, 1.0f, 0.0f);
+			vertices[i * n + j].Tangent = XMFLOAT3(1.0f, 0.0f, 0.0f);
 
 			// Stretch texture over grid.
-			vertices[i * n + j].TexC.x = j * du;
-			vertices[i * n + j].TexC.y = i * dv;
+			vertices[i * n + j].TexCoord.x = j * du;
+			vertices[i * n + j].TexCoord.y = i * dv;
 		}
 	}
 

@@ -34,8 +34,8 @@ Cylinder::Cylinder(ID3D11Device& device, ID3D11DeviceContext& deviceContext, flo
 
 			vertex.Position = XMFLOAT3(r * c, y, r * s);
 
-			vertex.TexC.x = (float)j / sliceCount;
-			vertex.TexC.y = 1.0f - (float)i / stackCount;
+			vertex.TexCoord.x = (float)j / sliceCount;
+			vertex.TexCoord.y = 1.0f - (float)i / stackCount;
 
 			// Cylinder can be parameterized as follows, where we introduce v
 			// parameter that goes in the same direction as the v tex-coord
@@ -73,20 +73,20 @@ Cylinder::Cylinder(ID3D11Device& device, ID3D11DeviceContext& deviceContext, flo
 
 	// Add one because we duplicate the first and last vertex per ring
 	// since the texture coordinates are different.
-	UINT ringVertexCount = sliceCount + 1;
+	UINT ringVerTexCoordount = sliceCount + 1;
 
 	// Compute indices for each stack.
 	for (UINT i = 0; i < stackCount; ++i)
 	{
 		for (UINT j = 0; j < sliceCount; ++j)
 		{
-			indices.push_back(i * ringVertexCount + j);
-			indices.push_back((i + 1) * ringVertexCount + j);
-			indices.push_back((i + 1) * ringVertexCount + j + 1);
+			indices.push_back(i * ringVerTexCoordount + j);
+			indices.push_back((i + 1) * ringVerTexCoordount + j);
+			indices.push_back((i + 1) * ringVerTexCoordount + j + 1);
 
-			indices.push_back(i * ringVertexCount + j);
-			indices.push_back((i + 1) * ringVertexCount + j + 1);
-			indices.push_back(i * ringVertexCount + j + 1);
+			indices.push_back(i * ringVerTexCoordount + j);
+			indices.push_back((i + 1) * ringVerTexCoordount + j + 1);
+			indices.push_back(i * ringVerTexCoordount + j + 1);
 		}
 	}
 

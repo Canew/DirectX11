@@ -68,18 +68,18 @@ Sky::Sky(ID3D11Device& device, ID3D11DeviceContext& deviceContext, float skySphe
 	// Offset the indices to the index of the first vertex in the first ring.
 	// This is just skipping the top pole vertex.
 	UINT baseIndex = 1;
-	UINT ringVertexCount = sliceCount + 1;
+	UINT ringVerTexCoordount = sliceCount + 1;
 	for (UINT i = 0; i < stackCount - 2; ++i)
 	{
 		for (UINT j = 0; j < sliceCount; ++j)
 		{
-			indices.push_back(baseIndex + i * ringVertexCount + j);
-			indices.push_back(baseIndex + i * ringVertexCount + j + 1);
-			indices.push_back(baseIndex + (i + 1) * ringVertexCount + j);
+			indices.push_back(baseIndex + i * ringVerTexCoordount + j);
+			indices.push_back(baseIndex + i * ringVerTexCoordount + j + 1);
+			indices.push_back(baseIndex + (i + 1) * ringVerTexCoordount + j);
 
-			indices.push_back(baseIndex + (i + 1) * ringVertexCount + j);
-			indices.push_back(baseIndex + i * ringVertexCount + j + 1);
-			indices.push_back(baseIndex + (i + 1) * ringVertexCount + j + 1);
+			indices.push_back(baseIndex + (i + 1) * ringVerTexCoordount + j);
+			indices.push_back(baseIndex + i * ringVerTexCoordount + j + 1);
+			indices.push_back(baseIndex + (i + 1) * ringVerTexCoordount + j + 1);
 		}
 	}
 
@@ -92,7 +92,7 @@ Sky::Sky(ID3D11Device& device, ID3D11DeviceContext& deviceContext, float skySphe
 	UINT southPoleIndex = (UINT)vertices.size() - 1;
 
 	// Offset the indices to the index of the first vertex in the last ring.
-	baseIndex = southPoleIndex - ringVertexCount;
+	baseIndex = southPoleIndex - ringVerTexCoordount;
 
 	for (UINT i = 0; i < sliceCount; ++i)
 	{
@@ -163,7 +163,7 @@ void Sky::Render(ID3D11DeviceContext& deviceContext)
 	deviceContext.VSSetConstantBuffers(bufferNumber, 1, mObjectBuffer.GetAddressOf());
 
 	// Set texture.
-	deviceContext.PSSetShaderResources(0, 1, mTexture.GetShaderResourceView().GetAddressOf());
+	deviceContext.PSSetShaderResources(0, 1, mDiffuseMap.GetShaderResourceView().GetAddressOf());
 
 	// Render sky.
 	unsigned int stride = sizeof(XMFLOAT3);

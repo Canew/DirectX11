@@ -1,6 +1,7 @@
 
-Texture2D    gDiffuseMap : register(t0);
-TextureCube gCubeMap : register(t1);
+Texture2D gDiffuseMap : register(t0);
+Texture2D gNormalMap : register(t1);
+TextureCube gCubeMap : register(t2);
 
 SamplerState gPointWrapSampler : register(s0);
 SamplerState gPointClampSampler : register(s1);
@@ -50,7 +51,8 @@ struct PixelIn
 	float4 PosH : SV_POSITION;
 	float3 PosW : POSITION;
 	float3 NormalW : NORMAL;
-	float2 TexC : TEXCOORD;
+	float2 TexCoord : TEXCOORD;
+    float3 TangentW : TANGENT;
 };
 
 static const float pi = 3.14159265f;
@@ -101,13 +103,24 @@ float SchlickFresnel(float3 halfNormal, float3 toLight)
 float4 main(PixelIn pin) : SV_Target
 {
     float4 litColor = { 0.0f, 0.0f, 0.0f, 0.0f };
-    float4 texColor = gDiffuseMap.Sample(gAnisotropicWrapSampler, pin.TexC);
-    texColor = pow(texColor, gamma);
-    clip(texColor.a - 0.1f);
+    float4 TexCoordolor = gDiffuseMap.Sample(gAnisotropicWrapSampler, pin.TexCoord);
+    TexCoordolor = pow(TexCoordolor, gamma);
+    clip(TexCoordolor.a - 0.1f);
 
     float3 toEyeW = gEyePosW - pin.PosW;
     float distToEye = length(toEyeW);
     toEyeW /= distToEye;
+
+    // Bump Normal
+    float3 normalMapSample = gNormalMap.Sample(gLinearWrapSampler, pin.TexCoord).xyz;
+    float3 normalT = 2.0f * normalMapSample - 1.0f;
+
+    float3 N = pin.NormalW;
+    float3 T = normalize(pin.TangentW - dot(pin.TangentW, N) * N);
+    float3 B = cross(N, T);
+    float3x3 TBN = float3x3(T, B, N);
+
+    float3 bumpedNormalW = normalize(mul(normalT, TBN));
 
     // Lighting
     // Attenuation
@@ -120,25 +133,25 @@ float4 main(PixelIn pin) : SV_Target
     //litColor = gLight.Ambient;
 
     // Diffuse BRDF
-    float ndotl = saturate(dot(pin.NormalW, -gLight.Direction));// * 0.5f + 0.5f; // Half Lambert
-    float3 diffuse = (saturate(texColor.xyz * ndotl));
+    float ndotl = saturate(dot(bumpedNormalW, -gLight.Direction));// * 0.5f + 0.5f; // Half Lambert
+    float3 diffuse = (saturate(TexCoordolor.xyz * ndotl));
 
     // Specular BRDF
     float3 halfNormal = normalize(-gLight.Direction + toEyeW);
 
     // Specular D
-    float specularD = NDF(pin.NormalW, halfNormal);
+    float specularD = NDF(bumpedNormalW, halfNormal);
 
     // Specular G
-    float specularG = GeometryShadow(pin.NormalW, -gLight.Direction, toEyeW);
+    float specularG = GeometryShadow(bumpedNormalW, -gLight.Direction, toEyeW);
 
     // Specular F
-    float specularF = SchlickFresnel(halfNormal, -gLight.Direction);
-    float metalBaseColor = { 0.9f };
+    float3 specularF = SchlickFresnel(halfNormal, -gLight.Direction);
+    float3 metalBaseColor = { 0.9f, 0.9f, 0.9f };
     specularF = lerp(0.08 * specularF, metalBaseColor, gMetallic);
 
     // Calculate Specular
-    float3 specular = (specularD * specularG * specularF) / pi * dot(pin.NormalW, -gLight.Direction) * dot(pin.NormalW, toEyeW) + 0.001f;
+    float3 specular = (specularD * specularG * specularF) / pi * dot(bumpedNormalW, -gLight.Direction) * dot(bumpedNormalW, toEyeW) + 0.001f;
     
     // Energy Conservation
     float3 kS = specularF;
@@ -147,13 +160,13 @@ float4 main(PixelIn pin) : SV_Target
 
     // Calculate Reflect
     float3 incident = -toEyeW;
-    float3 reflectionVector = reflect(incident, pin.NormalW);
+    float3 reflectionVector = reflect(incident, bumpedNormalW);
     float4 reflectionColor = gCubeMap.Sample(gAnisotropicWrapSampler, reflectionVector);
 
     specular += saturate(specularF * (1.0f - gRoughness) * reflectionColor.xyz);
 
     // Calculate Radiance
-    float3 rad = ((kD * diffuse / pi) + specular) * radiance * dot(-gLight.Direction, pin.NormalW);
+    float3 rad = ((kD * diffuse / pi) + specular) * radiance * dot(-gLight.Direction, bumpedNormalW);
     litColor.xyz += rad;
     
 

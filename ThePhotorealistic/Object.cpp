@@ -6,7 +6,7 @@
 #include "Object.h"
 
 Object::Object(ID3D11Device& device, ID3D11DeviceContext& deviceContext, std::string_view filepath)
-	: mTexture(device), mMaterial(XMFLOAT4(0.5f, 0.5f, 0.5f, 0.1f), 0.04f, 0.0f, 0.1f), mShaderClass(BasicShader::StaticClass()), mDevice(device), mDeviceContext(deviceContext)
+	: mMaterial(XMFLOAT4(0.5f, 0.5f, 0.5f, 0.1f), 0.04f, 0.0f, 0.1f), mShaderClass(BasicShader::StaticClass()), mDevice(device), mDeviceContext(deviceContext)
 {
 	if (!filepath.empty())
 	{
@@ -91,7 +91,8 @@ void Object::Render(ID3D11DeviceContext& deviceContext)
 	deviceContext.PSSetConstantBuffers(bufferNumber, 1, mMaterialBuffer.GetAddressOf());
 
 	// Set texture.
-	deviceContext.PSSetShaderResources(0, 1, mTexture.GetShaderResourceView().GetAddressOf());
+	deviceContext.PSSetShaderResources(0, 1, mDiffuseMap.GetShaderResourceView().GetAddressOf());
+	deviceContext.PSSetShaderResources(1, 1, mNormalMap.GetShaderResourceView().GetAddressOf());
 
 	// Render meshes.
 	for (unsigned int i = 0; i < mMeshes.size(); ++i)
@@ -164,14 +165,24 @@ void Object::SetRoughness(float roughness)
 	mMaterial.Roughness = roughness;
 }
 
-void Object::SetTexture(ID3D11Device& device, const WCHAR* filename)
+void Object::SetDiffuseMap(ID3D11Device& device, const WCHAR* filename)
 {
-	mTexture = Texture(device, filename);
+	mDiffuseMap = Texture(device, filename);
 }
 
-void Object::SetTexture(Texture texture)
+void Object::SetDiffuseMap(Texture texture)
 {
-	mTexture = texture;
+	mDiffuseMap = texture;
+}
+
+void Object::SetNormalMap(ID3D11Device& device, const WCHAR* filename)
+{
+	mNormalMap = Texture(device, filename);
+}
+
+void Object::SetNormalMap(Texture texture)
+{
+	mNormalMap = texture;
 }
 
 void Object::SetShaderClass(Shader* shader)
@@ -194,7 +205,7 @@ void Object::LoadModel(std::string_view filepath)
 {
 	Assimp::Importer importer;
 
-	const aiScene* pScene = importer.ReadFile(filepath.data(), aiProcess_Triangulate | aiProcess_ConvertToLeftHanded);
+	const aiScene* pScene = importer.ReadFile(filepath.data(), aiProcess_Triangulate | aiProcess_CalcTangentSpace | aiProcess_ConvertToLeftHanded);
 	if (pScene == nullptr)
 	{
 		throw std::exception();
@@ -212,7 +223,7 @@ void Object::LoadModel(std::string_view filepath)
 			material->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath);
 			if (const aiTexture* pTexture = pScene->GetEmbeddedTexture(texturePath.C_Str()))
 			{
-				mTexture = Texture(mDevice, pTexture);
+				mDiffuseMap = Texture(mDevice, pTexture);
 			}
 		}
 	}
@@ -258,8 +269,15 @@ Mesh Object::ProcessMesh(aiMesh* mesh, const aiScene* scene)
 		
 		if (mesh->HasTextureCoords(0))
 		{
-			vertex.TexC.x = static_cast<float>(mesh->mTextureCoords[0][i].x);
-			vertex.TexC.y = static_cast<float>(mesh->mTextureCoords[0][i].y);
+			vertex.TexCoord.x = static_cast<float>(mesh->mTextureCoords[0][i].x);
+			vertex.TexCoord.y = static_cast<float>(mesh->mTextureCoords[0][i].y);
+		}
+
+		if (mesh->HasTangentsAndBitangents())
+		{
+			vertex.Tangent.x = mesh->mTangents->x;
+			vertex.Tangent.y = mesh->mTangents->y;
+			vertex.Tangent.z = mesh->mTangents->z;
 		}
 
 		vertices.push_back(vertex);

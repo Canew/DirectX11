@@ -4,7 +4,7 @@
 Hill::Hill(ID3D11Device& device, ID3D11DeviceContext& deviceContext, float width, float depth, UINT m, UINT n)
 	: Object(device, deviceContext)
 {
-	UINT mVertexCount = m * n;
+	UINT mVerTexCoordount = m * n;
 	UINT faceCount = (m - 1) * (n - 1) * 2;
 
 	//
@@ -19,7 +19,7 @@ Hill::Hill(ID3D11Device& device, ID3D11DeviceContext& deviceContext, float width
 	float du = 1.0f / (n - 1);
 	float dv = 1.0f / (m - 1);
 
-	std::vector<Vertex> vertices(mVertexCount);
+	std::vector<Vertex> vertices(mVerTexCoordount);
 
 	for (UINT i = 0; i < m; ++i)
 	{
@@ -36,8 +36,8 @@ Hill::Hill(ID3D11Device& device, ID3D11DeviceContext& deviceContext, float width
 				-0.3f * sinf(0.1f * x) + 0.03f * x * sinf(0.1f * z));
 
 			// Stretch texture over Hill.
-			vertices[i * n + j].TexC.x = j * du;
-			vertices[i * n + j].TexC.y = i * dv;
+			vertices[i * n + j].TexCoord.x = j * du;
+			vertices[i * n + j].TexCoord.y = i * dv;
 		}
 	}
 

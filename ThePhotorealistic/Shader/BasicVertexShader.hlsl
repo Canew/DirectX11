@@ -10,7 +10,8 @@ struct VertexIn
 {
 	float3 PosL : POSITION;
 	float3 NormalL : NORMAL;
-	float2 TexC : TEXCOORD;
+	float2 TexCoord : TEXCOORD;
+	float3 TangentL : TANGENT;
 };
 
 struct VertexOut
@@ -18,7 +19,8 @@ struct VertexOut
 	float4 PosH : SV_POSITION;
 	float3 PosW : POSITION;
 	float3 NormalW : NORMAL;
-	float2 TexC : TEXCOORD;
+	float2 TexCoord : TEXCOORD;
+	float3 TangentW : TANGENT;
 };
 
 VertexOut main(VertexIn vin)
@@ -33,10 +35,13 @@ VertexOut main(VertexIn vin)
 	vout.PosH = mul(vout.PosH, gView);
 	vout.PosH = mul(vout.PosH, gProjection);
 
-
 	vout.NormalW = mul(vin.NormalL, (float3x3)gWorld);
 	vout.NormalW = normalize(vout.NormalW);
-	vout.TexC = vin.TexC;
+
+	vout.TexCoord = vin.TexCoord;
+
+	vout.TangentW = mul(vin.TangentL, (float3x3)gWorld);
+	vout.TangentW = normalize(vout.TangentW);
 
 	return vout;
 }

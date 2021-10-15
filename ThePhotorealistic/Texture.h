@@ -5,6 +5,7 @@
 class Texture
 {
 public:
+	Texture() = default;
 	Texture(ID3D11Device& device);
 	Texture(ID3D11Device& device, const WCHAR* filename);
 	Texture(ID3D11Device& device, const aiTexture* aiTexture);

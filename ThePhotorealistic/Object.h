@@ -47,12 +47,15 @@ public:
 	virtual void SetFresnel0(float fresnel0);
 	virtual void SetMetallic(float metallic);
 	virtual void SetRoughness(float roughness);
-	virtual void SetTexture(ID3D11Device& device, const WCHAR* filename);
-	virtual void SetTexture(Texture texture);
+	virtual void SetDiffuseMap(ID3D11Device& device, const WCHAR* filename);
+	virtual void SetDiffuseMap(Texture texture);
+	virtual void SetNormalMap(ID3D11Device& device, const WCHAR* filename);
+	virtual void SetNormalMap(Texture texture);
 	virtual void SetShaderClass(Shader* shader);
 
 	virtual Shader* GetShaderClass();
-	virtual Texture& GetTexture() { return mTexture; }
+	virtual Texture& GetDiffuseMap() { return mDiffuseMap; }
+	virtual Texture& GetNormalMap() { return mNormalMap; }
 	virtual std::vector<Mesh> GetMeshes() { return mMeshes; }
 
 	bool IsTransparent();
@@ -73,7 +76,8 @@ protected:
 	XMFLOAT3 mScale = { 1.0f, 1.0f, 1.0f };
 
 	Material mMaterial;
-	Texture mTexture;
+	Texture mDiffuseMap;
+	Texture mNormalMap;
 	Shader* mShaderClass;
 
 	ID3D11Device& mDevice;

@@ -4,6 +4,7 @@
 
 #include <string_view>
 #include <vector>
+#include <memory>
 
 #include "assimp/Importer.hpp"
 #include "assimp/cimport.h"

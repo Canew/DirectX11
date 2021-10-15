@@ -150,7 +150,7 @@ Geosphere::Geosphere(ID3D11Device& device, ID3D11DeviceContext& deviceContext, f
 
 		float phi = acosf(vertices[i].Position.y / radius);
 
-		vertices[i].TexC.x = theta / XM_2PI;
-		vertices[i].TexC.y = phi / XM_PI;
+		vertices[i].TexCoord.x = theta / XM_2PI;
+		vertices[i].TexCoord.y = phi / XM_PI;
 	}
 }

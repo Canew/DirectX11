@@ -19,9 +19,10 @@ Scene::Scene(ID3D11Device& device, ID3D11DeviceContext& deviceContext)
 {
     CreateConstantBuffer(device);
 
-    // Ground and Asphalte
+    // Ground
     auto pGround = std::make_unique<Grid>(device, deviceContext, 300.0f, 300.0f, 300, 300);
-    pGround->SetTexture(device, L"Texture/gravel_diffuse.dds");
+    pGround->SetDiffuseMap(device, L"Texture/gravel_diffuse.dds");
+    pGround->SetNormalMap(device, L"Texture/gravel_diffuse_normal.png");
     pGround->SetPosition(0.0f, 0.0f, 0.0f);
     pGround->SetRoughness(0.9f);
     mObjectList.push_back(std::move(pGround));
@@ -29,11 +30,15 @@ Scene::Scene(ID3D11Device& device, ID3D11DeviceContext& deviceContext)
     // Cube
     auto pCube = std::make_unique<Cube>(device, deviceContext, 5.0f, 5.0f, 5.0f);
     pCube->SetPosition(5.0f, 10.0f, 0.0f);
-    pCube->SetTexture(device, L"Texture/bricks2.dds");
+    pCube->SetMetallic(0.02f);
+    pCube->SetRoughness(0.98f);
+    pCube->SetDiffuseMap(device, L"Texture/bricks2.dds");
+    pCube->SetNormalMap(device, L"Texture/bricks2_normal.png");
     mObjectList.push_back(std::move(pCube));
 
     // Sphere
-    Texture sphereTexture = Texture(device, L"Texture/divingBoardFloor_diffuse.dds");
+    Texture sphereDiffuse = Texture(device, L"Texture/divingBoardFloor_diffuse.dds");
+    Texture sphereNormal = Texture(device, L"Texture/divingBoardFloor_diffuse_normal.png");
     for (int i = 0; i <= 10; i++)
     {
         for (int j = 0; j <= 10; j++)
@@ -43,7 +48,8 @@ Scene::Scene(ID3D11Device& device, ID3D11DeviceContext& deviceContext)
             pSphere->SetScale(5.0f, 5.0f, 5.0f);
             pSphere->SetRoughness(i * 0.1f);
             pSphere->SetMetallic(1.0f - (j * 0.1f));
-            pSphere->SetTexture(sphereTexture);
+            pSphere->SetDiffuseMap(sphereDiffuse);
+            pSphere->SetNormalMap(sphereNormal);
             mObjectList.push_back(std::move(pSphere));
         }
     }
@@ -52,12 +58,14 @@ Scene::Scene(ID3D11Device& device, ID3D11DeviceContext& deviceContext)
     auto pFence = std::make_unique<Grid>(device, deviceContext, 10.0f, 10.0f, 10, 10);
     pFence->SetPosition(0.0f, 10.0f, 0.0f);
     pFence->SetRotation(0.0f, 0.0f, XMConvertToRadians(90.0f));
-    pFence->SetTexture(device, L"Texture/WireFence.dds");
+    pFence->SetDiffuseMap(device, L"Texture/WireFence.dds");
+    pFence->SetNormalMap(device, L"Texture/WireFence_normal.png");
     mObjectList.push_back(std::move(pFence));
 
     // Model
     auto pModel = std::make_unique<Object>(device, deviceContext, "Model/Rwby.fbx");
-    pModel->SetTexture(device, L"Model/Rwby_Texture.png");
+    pModel->SetDiffuseMap(device, L"Model/Rwby_Diffuse.png");
+    pModel->SetNormalMap(device, L"Model/Rwby_Normal.png");
     pModel->SetPosition(40.0f, 10.0f, 20.0f);
     pModel->SetScale(10.0f, 10.0f, 10.0f);
     mObjectList.push_back(std::move(pModel));
@@ -65,7 +73,7 @@ Scene::Scene(ID3D11Device& device, ID3D11DeviceContext& deviceContext)
     // Sky
     std::unique_ptr<Sky> pSky = std::make_unique<Sky>(device, deviceContext, 1000.0f);
     pSky->SetShaderClass(SkyShader::StaticClass());
-    pSky->SetTexture(device, L"Texture/grasscube1024.dds");
+    pSky->SetDiffuseMap(device, L"Texture/grasscube1024.dds");
     mSky = std::move(pSky);
 }
 
@@ -81,7 +89,7 @@ void Scene::Render(ID3D11DeviceContext& deviceContext)
 {
     // Render object.
     UpdateConstantBuffer(deviceContext);
-    deviceContext.PSSetShaderResources(1, 1, mSky->GetTexture().GetShaderResourceView().GetAddressOf());
+    deviceContext.PSSetShaderResources(2, 1, mSky->GetDiffuseMap().GetShaderResourceView().GetAddressOf());
     deviceContext.OMSetDepthStencilState(0, 0);
     for (auto& object : mObjectList)
     {

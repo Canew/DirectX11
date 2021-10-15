@@ -39,11 +39,19 @@ Sphere::Sphere(ID3D11Device& device, ID3D11DeviceContext& deviceContext, float r
 			v.Position.y = radius * cosf(phi);
 			v.Position.z = radius * sinf(phi) * sinf(theta);
 
+			// Partial derivative of P with respect to theta
+			v.Tangent.x = -radius * sinf(phi) * sinf(theta);
+			v.Tangent.y = 0.0f;
+			v.Tangent.z = +radius * sinf(phi) * cosf(theta);
+
+			XMVECTOR T = XMLoadFloat3(&v.Tangent);
+			XMStoreFloat3(&v.Tangent, XMVector3Normalize(T));
+
 			XMVECTOR p = XMLoadFloat3(&v.Position);
 			XMStoreFloat3(&v.Normal, XMVector3Normalize(p));
 
-			v.TexC.x = theta / XM_2PI;
-			v.TexC.y = phi / XM_PI;
+			v.TexCoord.x = theta / XM_2PI;
+			v.TexCoord.y = phi / XM_PI;
 
 			vertices.push_back(v);
 		}
@@ -70,18 +78,18 @@ Sphere::Sphere(ID3D11Device& device, ID3D11DeviceContext& deviceContext, float r
 	// Offset the indices to the index of the first vertex in the first ring.
 	// This is just skipping the top pole vertex.
 	UINT baseIndex = 1;
-	UINT ringVertexCount = sliceCount + 1;
+	UINT ringVerTexCoordount = sliceCount + 1;
 	for (UINT i = 0; i < stackCount - 2; ++i)
 	{
 		for (UINT j = 0; j < sliceCount; ++j)
 		{
-			indices.push_back(baseIndex + i * ringVertexCount + j);
-			indices.push_back(baseIndex + i * ringVertexCount + j + 1);
-			indices.push_back(baseIndex + (i + 1) * ringVertexCount + j);
+			indices.push_back(baseIndex + i * ringVerTexCoordount + j);
+			indices.push_back(baseIndex + i * ringVerTexCoordount + j + 1);
+			indices.push_back(baseIndex + (i + 1) * ringVerTexCoordount + j);
 
-			indices.push_back(baseIndex + (i + 1) * ringVertexCount + j);
-			indices.push_back(baseIndex + i * ringVertexCount + j + 1);
-			indices.push_back(baseIndex + (i + 1) * ringVertexCount + j + 1);
+			indices.push_back(baseIndex + (i + 1) * ringVerTexCoordount + j);
+			indices.push_back(baseIndex + i * ringVerTexCoordount + j + 1);
+			indices.push_back(baseIndex + (i + 1) * ringVerTexCoordount + j + 1);
 		}
 	}
 
@@ -94,7 +102,7 @@ Sphere::Sphere(ID3D11Device& device, ID3D11DeviceContext& deviceContext, float r
 	UINT southPoleIndex = (UINT)vertices.size() - 1;
 
 	// Offset the indices to the index of the first vertex in the last ring.
-	baseIndex = southPoleIndex - ringVertexCount;
+	baseIndex = southPoleIndex - ringVerTexCoordount;
 
 	for (UINT i = 0; i < sliceCount; ++i)
 	{
