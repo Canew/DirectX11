@@ -2,9 +2,13 @@
 cbuffer cbPerObject : register(b0)
 {
 	matrix gWorld;
+};
+
+cbuffer cbPerFrame : register(b1)
+{
 	matrix gView;
 	matrix gProjection;
-};
+}
 
 struct VertexIn
 {

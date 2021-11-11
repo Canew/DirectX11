@@ -1,38 +1,53 @@
 #include "stdafx.h"
 #include "Light.h"
 
-Light::Light(ID3D11Device& device)
+XMMATRIX Light::GetView()
 {
-	// Build Constant Buffers
-	D3D11_BUFFER_DESC lightBufferDesc = {};
-	lightBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-	lightBufferDesc.ByteWidth = sizeof(LightBuffer);
-	lightBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	lightBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	lightBufferDesc.MiscFlags = 0;
-	lightBufferDesc.StructureByteStride = 0;
+	XMVECTOR P = XMLoadFloat3(&mPosition);
+	XMVECTOR U = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+	XMVECTOR L = XMVectorAdd(P, XMLoadFloat3(&mDirection));
+	XMVECTOR R = XMVector3Cross(U, L);
 
-	device.CreateBuffer(&lightBufferDesc, NULL, mLightBuffer.GetAddressOf());
-}
+	// Keep camera's axes orthogonal to each other and of unit length.
+	L = XMVector3Normalize(L);
+	U = XMVector3Normalize(XMVector3Cross(L, R));
 
-void Light::SetConstantBuffer(ID3D11DeviceContext& deviceContext)
-{
-	// Set PS Constant Buffer
-	D3D11_MAPPED_SUBRESOURCE mappedResource;
-	deviceContext.Map(mLightBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	// U, L already ortho-normal, so no need to normalize cross product.
+	R = XMVector3Normalize(R);
 
-	LightBuffer* lightBufferPtr = reinterpret_cast<LightBuffer*>(mappedResource.pData);
-	lightBufferPtr->Ambient = mAmbient;
-	lightBufferPtr->Diffuse = mDiffuse;
-	lightBufferPtr->Intensity = mIntensity;
-	lightBufferPtr->FalloffStart = mFalloffStart;
-	lightBufferPtr->Direction = mDirection;
-	lightBufferPtr->FalloffEnd = mFalloffEnd;
-	lightBufferPtr->Position = mPosition;
-	lightBufferPtr->SpotPower = mSpotPower;
+	// Fill in the view matrix entries.
+	float x = -XMVectorGetX(XMVector3Dot(P, R));
+	float y = -XMVectorGetX(XMVector3Dot(P, U));
+	float z = -XMVectorGetX(XMVector3Dot(P, L));
 
-	deviceContext.Unmap(mLightBuffer.Get(), 0);
+	XMFLOAT3 right;
+	XMStoreFloat3(&right, R);
+	XMFLOAT3 up;
+	XMStoreFloat3(&up, U);
+	XMFLOAT3 look;
+	XMStoreFloat3(&look, L);
 
-	unsigned int bufferNumber = 1;
-	deviceContext.PSSetConstantBuffers(bufferNumber, 1, mLightBuffer.GetAddressOf());
+	XMFLOAT4X4 view;
+
+	view(0, 0) = right.x;
+	view(1, 0) = right.y;
+	view(2, 0) = right.z;
+	view(3, 0) = x;
+
+	view(0, 1) = up.x;
+	view(1, 1) = up.y;
+	view(2, 1) = up.z;
+	view(3, 1) = y;
+
+	view(0, 2) = look.x;
+	view(1, 2) = look.y;
+	view(2, 2) = look.z;
+	view(3, 2) = z;
+
+	view(0, 3) = 0.0f;
+	view(1, 3) = 0.0f;
+	view(2, 3) = 0.0f;
+	view(3, 3) = 1.0f;
+
+	return XMLoadFloat4x4(&view);
 }

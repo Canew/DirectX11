@@ -1,7 +1,8 @@
 
 Texture2D gDiffuseMap : register(t0);
 Texture2D gNormalMap : register(t1);
-TextureCube gCubeMap : register(t2);
+Texture2D gShadowMap : register(t2);
+TextureCube gCubeMap : register(t3);
 
 SamplerState gPointWrapSampler : register(s0);
 SamplerState gPointClampSampler : register(s1);
@@ -9,20 +10,6 @@ SamplerState gLinearWrapSampler : register(s2);
 SamplerState gLinearClampSampler : register(s3);
 SamplerState gAnisotropicWrapSampler : register(s4);
 SamplerState gAnisotropicClampSampler : register(s5);
-
-
-struct Light
-{
-    float4 Ambient;
-    float4 Diffuse;
-	float3 Intensity;
-	float FalloffStart;           // point/spot light only
-	float3 Direction;    // directional/spot light only
-	float FalloffEnd;            // point/spot light only
-	float3 Position;     // point light only
-	float SpotPower;          // spot light only
-};
-
 
 cbuffer cbMaterial : register(b0)
 {
@@ -36,12 +23,20 @@ cbuffer cbMaterial : register(b0)
 cbuffer cbPass : register(b1)
 {
 	float3 gEyePosW;
-	float pad;
+	float pad1;
 
-    Light gLight;
+    float4 gLightAmbient;
+    float4 gLightDiffuse;
+    float3 gLightIntensity;
+    float pad2;
+    float3 gLightDirection;
+    float pad3;
+    float3 gLightPosition;
+    float pad4;
 
     float gFogStart;
     float gFogRange;
+    float2 pad5;
     float4 gFogColor;
 };
 
@@ -124,34 +119,34 @@ float4 main(PixelIn pin) : SV_Target
 
     // Lighting
     // Attenuation
-    float distance = length(gLight.Position - pin.PosW);
+    float distance = length(gLightPosition - pin.PosW);
     float attenuation = 1.0f / (distance * distance);
-    //float3 radiance = gLight.Diffuse.xyz * gLight.Intensity * attenuation;
+    //float3 radiance = gLightDiffuse.xyz * gLightIntensity * attenuation;
     float3 radiance = { 1.0f, 1.0f, 1.0f };
     
     // Ambient
-    //litColor = gLight.Ambient;
+    //litColor = gLightAmbient;
 
     // Diffuse BRDF
-    float ndotl = saturate(dot(bumpedNormalW, -gLight.Direction));// * 0.5f + 0.5f; // Half Lambert
+    float ndotl = saturate(dot(bumpedNormalW, -gLightDirection));// * 0.5f + 0.5f; // Half Lambert
     float3 diffuse = (saturate(TexCoordolor.xyz * ndotl));
 
     // Specular BRDF
-    float3 halfNormal = normalize(-gLight.Direction + toEyeW);
+    float3 halfNormal = normalize(-gLightDirection + toEyeW);
 
     // Specular D
     float specularD = NDF(bumpedNormalW, halfNormal);
 
     // Specular G
-    float specularG = GeometryShadow(bumpedNormalW, -gLight.Direction, toEyeW);
+    float specularG = GeometryShadow(bumpedNormalW, -gLightDirection, toEyeW);
 
     // Specular F
-    float3 specularF = SchlickFresnel(halfNormal, -gLight.Direction);
+    float3 specularF = SchlickFresnel(halfNormal, -gLightDirection);
     float3 metalBaseColor = { 0.9f, 0.9f, 0.9f };
     specularF = lerp(0.08 * specularF, metalBaseColor, gMetallic);
 
     // Calculate Specular
-    float3 specular = (specularD * specularG * specularF) / pi * dot(bumpedNormalW, -gLight.Direction) * dot(bumpedNormalW, toEyeW) + 0.001f;
+    float3 specular = (specularD * specularG * specularF) / pi * dot(bumpedNormalW, -gLightDirection) * dot(bumpedNormalW, toEyeW) + 0.001f;
     
     // Energy Conservation
     float3 kS = specularF;
@@ -166,7 +161,7 @@ float4 main(PixelIn pin) : SV_Target
     specular += saturate(specularF * (1.0f - gRoughness) * reflectionColor.xyz);
 
     // Calculate Radiance
-    float3 rad = ((kD * diffuse / pi) + specular) * radiance * dot(-gLight.Direction, bumpedNormalW);
+    float3 rad = ((kD * diffuse / pi) + specular) * radiance * dot(-gLightDirection, bumpedNormalW);
     litColor.xyz += rad;
     
 

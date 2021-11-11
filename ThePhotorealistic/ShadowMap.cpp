@@ -3,6 +3,11 @@
 //***************************************************************************************
 #include "stdafx.h"
 #include "ShadowMap.h"
+#include "Camera.h"
+#include "Light.h"
+#include "Object.h"
+#include "Shader.h"
+#include "DepthShader.h"
 
 ShadowMap::ShadowMap(ID3D11Device& device, UINT width, UINT height)
     : mWidth(width), mHeight(height)
@@ -33,14 +38,14 @@ ShadowMap::ShadowMap(ID3D11Device& device, UINT width, UINT height)
     ComPtr<ID3D11Texture2D> depthMap;
     device.CreateTexture2D(&texDesc, 0, depthMap.GetAddressOf());
 
-    D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc;
+    D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
     dsvDesc.Flags = 0;
     dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
     dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
     dsvDesc.Texture2D.MipSlice = 0;
     device.CreateDepthStencilView(depthMap.Get(), &dsvDesc, mDepthMapDSV.GetAddressOf());
 
-    D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+    D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
     srvDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
     srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
     srvDesc.Texture2D.MipLevels = texDesc.MipLevels;
@@ -48,9 +53,34 @@ ShadowMap::ShadowMap(ID3D11Device& device, UINT width, UINT height)
     device.CreateShaderResourceView(depthMap.Get(), &srvDesc, mDepthMapSRV.GetAddressOf());
 }
 
-ComPtr<ID3D11ShaderResourceView> ShadowMap::DepthMapSRV()
+void ShadowMap::Render(ID3D11DeviceContext& deviceContext, std::vector<std::unique_ptr<Object>>& objects)
+{
+    BindDsvAndSetNullRenderTarget(deviceContext);
+
+    for (std::unique_ptr<Object>& object : objects)
+    {
+        Shader* originShader = object->GetShaderClass();
+        object->SetShaderClass(DepthShader::StaticClass());
+
+        object->Render(deviceContext);
+
+        object->SetShaderClass(originShader);
+    }
+}
+
+ComPtr<ID3D11ShaderResourceView> ShadowMap::GetDepthMapSRV()
 {
     return mDepthMapSRV;
+}
+
+Light* ShadowMap::GetLightReference()
+{
+    return mLightReference;
+}
+
+void ShadowMap::SetLightReference(Light* lightReference)
+{
+    mLightReference = lightReference;
 }
 
 void ShadowMap::BindDsvAndSetNullRenderTarget(ID3D11DeviceContext& deviceContext)
@@ -64,4 +94,3 @@ void ShadowMap::BindDsvAndSetNullRenderTarget(ID3D11DeviceContext& deviceContext
 
     deviceContext.ClearDepthStencilView(mDepthMapDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 }
-

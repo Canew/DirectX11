@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "Shader.h"
+#include "Camera.h"
 
 void Shader::Init(ID3D11Device& device)
 {

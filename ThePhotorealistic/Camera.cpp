@@ -122,17 +122,17 @@ void Camera::LookAt(const XMFLOAT3& pos, const XMFLOAT3& target, const XMFLOAT3&
 	LookAt(P, T, U);
 }
 
-XMMATRIX Camera::GetView()const
+XMMATRIX Camera::GetView() const
 {
 	return XMLoadFloat4x4(&mView);
 }
 
-XMMATRIX Camera::GetProjection()const
+XMMATRIX Camera::GetProjection() const
 {
 	return XMLoadFloat4x4(&mProjection);
 }
 
-XMMATRIX Camera::GetViewProjection()const
+XMMATRIX Camera::GetViewProjection() const
 {
 	return XMMatrixMultiply(GetView(), GetProjection());
 }

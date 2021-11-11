@@ -149,13 +149,12 @@ void Sky::Render(ID3D11DeviceContext& deviceContext)
 	projection = XMMatrixTranspose(projection);
 
 	// Set VS constant buffer
+	// Per Object
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	deviceContext.Map(mObjectBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 
 	ObjectMatrix* objectBufferPtr = reinterpret_cast<ObjectMatrix*>(mappedResource.pData);
 	objectBufferPtr->World = world;
-	objectBufferPtr->View = view;
-	objectBufferPtr->Projection = projection;
 
 	deviceContext.Unmap(mObjectBuffer.Get(), 0);
 
@@ -163,7 +162,7 @@ void Sky::Render(ID3D11DeviceContext& deviceContext)
 	deviceContext.VSSetConstantBuffers(bufferNumber, 1, mObjectBuffer.GetAddressOf());
 
 	// Set texture.
-	deviceContext.PSSetShaderResources(0, 1, mDiffuseMap.GetShaderResourceView().GetAddressOf());
+	deviceContext.PSSetShaderResources(0, 1, mDiffuseMap->GetShaderResourceView().GetAddressOf());
 
 	// Render sky.
 	unsigned int stride = sizeof(XMFLOAT3);

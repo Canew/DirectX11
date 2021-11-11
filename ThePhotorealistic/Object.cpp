@@ -20,7 +20,7 @@ Object::Object(ID3D11Device& device, ID3D11DeviceContext& deviceContext, std::st
 		}
 	}
 
-	// Build Matrix Constant Buffers
+	// Build Object  Matrix Constant Buffers
 	D3D11_BUFFER_DESC objectBufferDesc = {};
 	objectBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
 	objectBufferDesc.ByteWidth = sizeof(ObjectMatrix);
@@ -55,21 +55,16 @@ void Object::Render(ID3D11DeviceContext& deviceContext)
 	world *= XMMatrixScaling(mScale.x, mScale.y, mScale.z);
 	world *= XMMatrixRotationRollPitchYaw(mRotation.x, mRotation.y, mRotation.z);
 	world *= XMMatrixTranslation(mPosition.x, mPosition.y, mPosition.z);
-	XMMATRIX view = Camera::GetInstance()->GetView();
-	XMMATRIX projection = Camera::GetInstance()->GetProjection();
 
 	world = XMMatrixTranspose(world);
-	view = XMMatrixTranspose(view);
-	projection = XMMatrixTranspose(projection);
 
 	// Set VS constant buffer
+	// Per object
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	deviceContext.Map(mObjectBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 
 	ObjectMatrix* objectBufferPtr = reinterpret_cast<ObjectMatrix*>(mappedResource.pData);
 	objectBufferPtr->World = world;
-	objectBufferPtr->View = view;
-	objectBufferPtr->Projection = projection;
 
 	deviceContext.Unmap(mObjectBuffer.Get(), 0);
 
@@ -91,8 +86,8 @@ void Object::Render(ID3D11DeviceContext& deviceContext)
 	deviceContext.PSSetConstantBuffers(bufferNumber, 1, mMaterialBuffer.GetAddressOf());
 
 	// Set texture.
-	deviceContext.PSSetShaderResources(0, 1, mDiffuseMap.GetShaderResourceView().GetAddressOf());
-	deviceContext.PSSetShaderResources(1, 1, mNormalMap.GetShaderResourceView().GetAddressOf());
+	deviceContext.PSSetShaderResources(0, 1, mDiffuseMap->GetShaderResourceView().GetAddressOf());
+	deviceContext.PSSetShaderResources(1, 1, mNormalMap->GetShaderResourceView().GetAddressOf());
 
 	// Render meshes.
 	for (unsigned int i = 0; i < mMeshes.size(); ++i)
@@ -167,20 +162,20 @@ void Object::SetRoughness(float roughness)
 
 void Object::SetDiffuseMap(ID3D11Device& device, const WCHAR* filename)
 {
-	mDiffuseMap = Texture(device, filename);
+	mDiffuseMap = std::make_shared<Texture>(device, filename);
 }
 
-void Object::SetDiffuseMap(Texture texture)
+void Object::SetDiffuseMap(std::shared_ptr<Texture> texture)
 {
 	mDiffuseMap = texture;
 }
 
 void Object::SetNormalMap(ID3D11Device& device, const WCHAR* filename)
 {
-	mNormalMap = Texture(device, filename);
+	mNormalMap = std::make_shared<Texture>(device, filename);
 }
 
-void Object::SetNormalMap(Texture texture)
+void Object::SetNormalMap(std::shared_ptr<Texture> texture)
 {
 	mNormalMap = texture;
 }
@@ -223,7 +218,7 @@ void Object::LoadModel(std::string_view filepath)
 			material->GetTexture(aiTextureType_DIFFUSE, 0, &texturePath);
 			if (const aiTexture* pTexture = pScene->GetEmbeddedTexture(texturePath.C_Str()))
 			{
-				mDiffuseMap = Texture(mDevice, pTexture);
+				mDiffuseMap = std::make_shared<Texture>(mDevice, pTexture);
 			}
 		}
 	}

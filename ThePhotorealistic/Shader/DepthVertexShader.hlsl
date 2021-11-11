@@ -8,31 +8,33 @@ cbuffer cbPerFrame : register(b1)
 {
 	matrix gView;
 	matrix gProjection;
-}
+};
 
 struct VertexIn
 {
 	float3 PosL : POSITION;
+	float3 NormalL : NORMAL;
+	float2 TexCoord : TEXCOORD;
+	float3 TangentL : TANGENT;
 };
 
 struct VertexOut
 {
 	float4 PosH : SV_POSITION;
-	float3 PosL : POSITION;
+	float2 TexCoord : TEXCOORD;
 };
 
 VertexOut main(VertexIn vin)
 {
 	VertexOut vout;
 
-	// Use local vertex position as cubemap lookup vector.
-	vout.PosL = vin.PosL;
-
-	// Set z = w so that z/w = 1 (i.e., skydome always on far plane).
+	// Transform to homogeneous clip space.
 	vout.PosH = mul(float4(vin.PosL, 1.0f), gWorld);
 	vout.PosH = mul(vout.PosH, gView);
 	vout.PosH = mul(vout.PosH, gProjection);
-	//vout.PosH.z = vout.PosH.w;
+
+	vout.TexCoord = vin.TexCoord;
 
 	return vout;
 }
+

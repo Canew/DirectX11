@@ -5,6 +5,7 @@
 #include <windowsX.h>
 #include <sstream>
 #include "BasicShader.h"
+#include "DepthShader.h"
 #include "SkyShader.h"
 #include "Scene.h"
 #include "Object.h"
@@ -32,8 +33,8 @@ ThePhotorealistic::ThePhotorealistic(HINSTANCE hInstance)
 	: mhAppInst(hInstance),
 	mMainWndCaption(L"ThePhotorealistic"),
 	md3dDriverType(D3D_DRIVER_TYPE_HARDWARE),
-	mClientWidth(800),
-	mClientHeight(600),
+	mClientWidth(1280),
+	mClientHeight(720),
 	mEnable4xMsaa(false),
 	mhMainWnd(0),
 	mAppPaused(false),
@@ -119,6 +120,7 @@ bool ThePhotorealistic::Init()
 	Camera::GetInstance();
 
 	BasicShader::StaticClass()->Init(*md3dDevice.Get());
+	DepthShader::StaticClass()->Init(*md3dDevice.Get());
 	SkyShader::StaticClass()->Init(*md3dDevice.Get());
 	RenderState::Init(*md3dDevice.Get());
 
@@ -279,6 +281,9 @@ void ThePhotorealistic::UpdateScene(float dt)
 {
 	Camera::GetInstance()->UpdateViewMatrix();
 
+	mScene->SetSceneRTV(mRenderTargetView.Get());
+	mScene->SetSceneDSV(mDepthStencilView.Get());
+	mScene->SetSceneViewport(mScreenViewport);
 	mScene->Update(*md3dImmediateContext.Get(), dt);
 }
 

@@ -13,11 +13,27 @@
 #include "Grid.h"
 #include "Hill.h"
 #include "Sky.h"
+#include "Fog.h"
+#include "ShadowMap.h"
 
 Scene::Scene(ID3D11Device& device, ID3D11DeviceContext& deviceContext)
     : mDevice(device), mDeviceContext(deviceContext)
 {
     CreateConstantBuffer(device);
+
+    // Light
+    std::unique_ptr<Light> pMainLight = std::make_unique<Light>();
+    pMainLight->SetAmbient(XMFLOAT4(0.1f, 0.1f, 0.1f, 1.0f));
+    pMainLight->SetDiffuse(XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f));
+    pMainLight->SetDirection(XMFLOAT3(0.57735f, -0.57735f, 0.57735f));
+    pMainLight->SetIntensity(XMFLOAT3(0.1f, 0.1f, 0.1f));
+    pMainLight->SetPosition(XMFLOAT3(0.0f, 250.0f, 0.0f));
+    mLightList.push_back(std::move(pMainLight));
+
+    // ShadowMap
+    std::unique_ptr<ShadowMap> pShadowMap = std::make_unique<ShadowMap>(device, 1280, 720);
+    pShadowMap->SetLightReference(mLightList[0].get());
+    mShadowMap = std::move(pShadowMap);
 
     // Ground
     auto pGround = std::make_unique<Grid>(device, deviceContext, 300.0f, 300.0f, 300, 300);
@@ -37,8 +53,8 @@ Scene::Scene(ID3D11Device& device, ID3D11DeviceContext& deviceContext)
     mObjectList.push_back(std::move(pCube));
 
     // Sphere
-    Texture sphereDiffuse = Texture(device, L"Texture/divingBoardFloor_diffuse.dds");
-    Texture sphereNormal = Texture(device, L"Texture/divingBoardFloor_diffuse_normal.png");
+    std::shared_ptr<Texture> sphereDiffuse = std::make_shared<Texture>(device, L"Texture/divingBoardFloor_diffuse.dds");
+    std::shared_ptr<Texture> sphereNormal = std::make_shared<Texture>(device, L"Texture/divingBoardFloor_diffuse_normal.png");
     for (int i = 0; i <= 10; i++)
     {
         for (int j = 0; j <= 10; j++)
@@ -75,6 +91,13 @@ Scene::Scene(ID3D11Device& device, ID3D11DeviceContext& deviceContext)
     pSky->SetShaderClass(SkyShader::StaticClass());
     pSky->SetDiffuseMap(device, L"Texture/grasscube1024.dds");
     mSky = std::move(pSky);
+
+    // Fog
+    std::unique_ptr<Fog> pFog = std::make_unique<Fog>();
+    pFog->SetFogStart(15.0f);
+    pFog->SetFogRange(500.0f);
+    pFog->SetFogColor(XMFLOAT4(0.22f, 0.2f, 0.2f, 0.5f));
+    mFog = std::move(pFog);
 }
 
 void Scene::Update(ID3D11DeviceContext& deviceContext, float dt)
@@ -87,9 +110,16 @@ void Scene::Update(ID3D11DeviceContext& deviceContext, float dt)
 
 void Scene::Render(ID3D11DeviceContext& deviceContext)
 {
+    // Render shadow map.
+    UpdateConstantBuffer(deviceContext, mShadowMap->GetLightReference()->GetView());
+    mShadowMap->Render(deviceContext, mObjectList);
+
     // Render object.
-    UpdateConstantBuffer(deviceContext);
-    deviceContext.PSSetShaderResources(2, 1, mSky->GetDiffuseMap().GetShaderResourceView().GetAddressOf());
+    BindRtvAndDsv(deviceContext);
+
+    UpdateConstantBuffer(deviceContext, Camera::GetInstance()->GetView());
+    deviceContext.PSSetShaderResources(2, 1, mShadowMap->GetDepthMapSRV().GetAddressOf());
+    deviceContext.PSSetShaderResources(3, 1, mSky->GetDiffuseMap()->GetShaderResourceView().GetAddressOf());
     deviceContext.OMSetDepthStencilState(0, 0);
     for (auto& object : mObjectList)
     {
@@ -104,6 +134,16 @@ void Scene::Render(ID3D11DeviceContext& deviceContext)
 
 void Scene::CreateConstantBuffer(ID3D11Device& device)
 {
+    // Build Frame Constant Buffers
+    D3D11_BUFFER_DESC frameBufferDesc = {};
+    frameBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+    frameBufferDesc.ByteWidth = sizeof(FrameMatrix);
+    frameBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    frameBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    frameBufferDesc.MiscFlags = 0;
+    frameBufferDesc.StructureByteStride = 0;
+    device.CreateBuffer(&frameBufferDesc, NULL, mFrameBuffer.GetAddressOf());
+
     // Build Pass Constant Buffers
     D3D11_BUFFER_DESC passBufferDesc = {};
     passBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
@@ -115,22 +155,53 @@ void Scene::CreateConstantBuffer(ID3D11Device& device)
     device.CreateBuffer(&passBufferDesc, NULL, mPassBuffer.GetAddressOf());
 }
 
-void Scene::UpdateConstantBuffer(ID3D11DeviceContext& deviceContext)
+void Scene::UpdateConstantBuffer(ID3D11DeviceContext& deviceContext, XMMATRIX viewMatrix)
 {
+    XMMATRIX view = viewMatrix;
+    XMMATRIX projection = Camera::GetInstance()->GetProjection();
+
+    view = XMMatrixTranspose(view);
+    projection = XMMatrixTranspose(projection);
+
+    // VS constant buffer
+    // Per frame
     D3D11_MAPPED_SUBRESOURCE mappedResource;
+    deviceContext.Map(mFrameBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+
+    FrameMatrix* frameBufferPtr = reinterpret_cast<FrameMatrix*>(mappedResource.pData);
+    frameBufferPtr->View = view;
+    frameBufferPtr->Projection = projection;
+
+    deviceContext.Unmap(mFrameBuffer.Get(), 0);
+
+    unsigned int bufferNumber = 1;
+    deviceContext.VSSetConstantBuffers(bufferNumber, 1, mFrameBuffer.GetAddressOf());
+
+    // PS constant buffer.
     deviceContext.Map(mPassBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+
     LightingPass* lightingPassBufferPtr = reinterpret_cast<LightingPass*>(mappedResource.pData);
     lightingPassBufferPtr->EyePosition = XMFLOAT3(Camera::GetInstance()->GetPosition().x, Camera::GetInstance()->GetPosition().y, Camera::GetInstance()->GetPosition().z);
-    lightingPassBufferPtr->Light.Ambient = { 0.1f, 0.1f, 0.1f, 1.0f };
-    lightingPassBufferPtr->Light.Diffuse = { 1.0f, 1.0f, 1.0f, 1.0f };
-    lightingPassBufferPtr->Light.Direction = { 0.57735f, -0.57735f, 0.57735f };
-    lightingPassBufferPtr->Light.Strength = { 1.0f, 1.0f, 1.0f };
-    lightingPassBufferPtr->FogStart = 15.0f;
-    lightingPassBufferPtr->FogRange = 500.0f;
-    lightingPassBufferPtr->FogColor = { 0.22f, 0.2f, 0.2f, 0.5f };
+
+    lightingPassBufferPtr->LightAmbient = mLightList[0]->GetAmbient();
+    lightingPassBufferPtr->LightDiffuse = mLightList[0]->GetDiffuse();
+    lightingPassBufferPtr->LightIntensity = mLightList[0]->GetIntensity();
+    lightingPassBufferPtr->LightDirection = mLightList[0]->GetDirection();
+    lightingPassBufferPtr->LightPosition = mLightList[0]->GetPosition();
+
+    lightingPassBufferPtr->FogStart = mFog->GetFogStart();
+    lightingPassBufferPtr->FogRange = mFog->GetFogRange();
+    lightingPassBufferPtr->FogColor = mFog->GetFogColor();
 
     deviceContext.Unmap(mPassBuffer.Get(), 0);
 
-    unsigned int bufferNumber = 1;
+    bufferNumber = 1;
     deviceContext.PSSetConstantBuffers(bufferNumber, 1, mPassBuffer.GetAddressOf());
+}
+
+void Scene::BindRtvAndDsv(ID3D11DeviceContext& deviceContext)
+{
+    deviceContext.RSSetViewports(1, &mSceneViewport);
+
+    deviceContext.OMSetRenderTargets(1, &mSceneRTV, mSceneDSV);
 }

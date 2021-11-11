@@ -24,8 +24,6 @@ protected:
 	struct ObjectMatrix
 	{
 		XMMATRIX World;
-		XMMATRIX View;
-		XMMATRIX Projection;
 	};
 
 public:
@@ -48,14 +46,14 @@ public:
 	virtual void SetMetallic(float metallic);
 	virtual void SetRoughness(float roughness);
 	virtual void SetDiffuseMap(ID3D11Device& device, const WCHAR* filename);
-	virtual void SetDiffuseMap(Texture texture);
+	virtual void SetDiffuseMap(std::shared_ptr<Texture> texture);
 	virtual void SetNormalMap(ID3D11Device& device, const WCHAR* filename);
-	virtual void SetNormalMap(Texture texture);
+	virtual void SetNormalMap(std::shared_ptr<Texture> texture);
 	virtual void SetShaderClass(Shader* shader);
 
 	virtual Shader* GetShaderClass();
-	virtual Texture& GetDiffuseMap() { return mDiffuseMap; }
-	virtual Texture& GetNormalMap() { return mNormalMap; }
+	virtual std::shared_ptr<Texture> GetDiffuseMap() { return mDiffuseMap; }
+	virtual std::shared_ptr<Texture> GetNormalMap() { return mNormalMap; }
 	virtual std::vector<Mesh> GetMeshes() { return mMeshes; }
 
 	bool IsTransparent();
@@ -76,8 +74,8 @@ protected:
 	XMFLOAT3 mScale = { 1.0f, 1.0f, 1.0f };
 
 	Material mMaterial;
-	Texture mDiffuseMap;
-	Texture mNormalMap;
+	std::shared_ptr<Texture> mDiffuseMap;
+	std::shared_ptr<Texture> mNormalMap;
 	Shader* mShaderClass;
 
 	ID3D11Device& mDevice;
