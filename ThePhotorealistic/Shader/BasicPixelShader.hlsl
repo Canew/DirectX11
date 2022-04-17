@@ -98,9 +98,9 @@ float SchlickFresnel(float3 halfNormal, float3 toLight)
 float4 main(PixelIn pin) : SV_Target
 {
     float4 litColor = { 0.0f, 0.0f, 0.0f, 0.0f };
-    float4 TexCoordolor = gDiffuseMap.Sample(gAnisotropicWrapSampler, pin.TexCoord);
-    TexCoordolor = pow(TexCoordolor, gamma);
-    clip(TexCoordolor.a - 0.1f);
+    float4 TexColor = gDiffuseMap.Sample(gAnisotropicWrapSampler, pin.TexCoord);
+    TexColor = pow(TexColor, gamma);
+    clip(TexColor.a - 0.1f);
 
     float3 toEyeW = gEyePosW - pin.PosW;
     float distToEye = length(toEyeW);
@@ -117,19 +117,18 @@ float4 main(PixelIn pin) : SV_Target
 
     float3 bumpedNormalW = normalize(mul(normalT, TBN));
 
-    // Lighting
+
+    /*** Lighting */
+
     // Attenuation
     float distance = length(gLightPosition - pin.PosW);
     float attenuation = 1.0f / (distance * distance);
     //float3 radiance = gLightDiffuse.xyz * gLightIntensity * attenuation;
     float3 radiance = { 1.0f, 1.0f, 1.0f };
-    
-    // Ambient
-    //litColor = gLightAmbient;
 
     // Diffuse BRDF
     float ndotl = saturate(dot(bumpedNormalW, -gLightDirection));// * 0.5f + 0.5f; // Half Lambert
-    float3 diffuse = (saturate(TexCoordolor.xyz * ndotl));
+    float3 diffuse = (saturate(TexColor.xyz * ndotl));
 
     // Specular BRDF
     float3 halfNormal = normalize(-gLightDirection + toEyeW);
@@ -164,6 +163,12 @@ float4 main(PixelIn pin) : SV_Target
     float3 rad = ((kD * diffuse / pi) + specular) * radiance * dot(-gLightDirection, bumpedNormalW);
     litColor.xyz += rad;
     
+    // Ambient
+    float3 ambient = gLightAmbient.xyz * TexColor;
+    litColor.xyz += ambient;
+
+    // HDR
+    litColor.xyz = litColor.xyz / (litColor.xyz + float3(1.0f, 1.0f, 1.0f));
 
     // Gamma Correction
     litColor.xyz = pow(litColor.xyz, float3(1.0f / gamma, 1.0f / gamma, 1.0f / gamma));

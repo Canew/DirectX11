@@ -23,10 +23,10 @@ Scene::Scene(ID3D11Device& device, ID3D11DeviceContext& deviceContext)
 
     // Light
     std::unique_ptr<Light> pMainLight = std::make_unique<Light>();
-    pMainLight->SetAmbient(XMFLOAT4(0.1f, 0.1f, 0.1f, 1.0f));
+    pMainLight->SetAmbient(XMFLOAT4(0.03f, 0.03f, 0.03f, 1.0f));
     pMainLight->SetDiffuse(XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f));
-    pMainLight->SetDirection(XMFLOAT3(0.57735f, -0.57735f, 0.57735f));
-    pMainLight->SetIntensity(XMFLOAT3(0.1f, 0.1f, 0.1f));
+    pMainLight->SetDirection(XMFLOAT3(0.17735f, -0.27735f, 0.87735f));
+    pMainLight->SetIntensity(XMFLOAT3(0.2f, 0.2f, 0.2f));
     pMainLight->SetPosition(XMFLOAT3(0.0f, 250.0f, 0.0f));
     mLightList.push_back(std::move(pMainLight));
 
@@ -55,15 +55,15 @@ Scene::Scene(ID3D11Device& device, ID3D11DeviceContext& deviceContext)
     // Sphere
     std::shared_ptr<Texture> sphereDiffuse = std::make_shared<Texture>(device, L"Texture/divingBoardFloor_diffuse.dds");
     std::shared_ptr<Texture> sphereNormal = std::make_shared<Texture>(device, L"Texture/divingBoardFloor_diffuse_normal.png");
-    for (int i = 0; i <= 10; i++)
+    for (int i = 0; i <= 5; i++)
     {
-        for (int j = 0; j <= 10; j++)
+        for (int j = 0; j <= 5; j++)
         {
             auto pSphere = std::make_unique<Object>(device, deviceContext, "Model/BasicSphere_Subdivide3.fbx");
-            pSphere->SetPosition(15.0f + i * 10.0f, 150.0f - j * 10.0f, 0.0f);
-            pSphere->SetScale(5.0f, 5.0f, 5.0f);
-            pSphere->SetRoughness(i * 0.1f);
-            pSphere->SetMetallic(1.0f - (j * 0.1f));
+            pSphere->SetPosition(15.0f + i * 5.0f, 250.0f - j * 5.0f, 0.0f);
+            pSphere->SetScale(2.5f, 2.5f, 2.5f);
+            pSphere->SetRoughness(i * 0.2f);
+            pSphere->SetMetallic(1.0f - (j * 0.2f));
             pSphere->SetDiffuseMap(sphereDiffuse);
             pSphere->SetNormalMap(sphereNormal);
             mObjectList.push_back(std::move(pSphere));
@@ -94,8 +94,8 @@ Scene::Scene(ID3D11Device& device, ID3D11DeviceContext& deviceContext)
 
     // Fog
     std::unique_ptr<Fog> pFog = std::make_unique<Fog>();
-    pFog->SetFogStart(15.0f);
-    pFog->SetFogRange(500.0f);
+    pFog->SetFogStart(500.0f);
+    pFog->SetFogRange(1000.0f);
     pFog->SetFogColor(XMFLOAT4(0.22f, 0.2f, 0.2f, 0.5f));
     mFog = std::move(pFog);
 }
